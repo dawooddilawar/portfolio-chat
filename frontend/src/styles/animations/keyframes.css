@@ -1,0 +1,49 @@
+/* src/styles/animations/keyframes.css */
+
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+@keyframes flicker {
+    0% {
+        opacity: 0.9;
+    }
+    5% {
+        opacity: 0.8;
+    }
+    10% {
+        opacity: 0.9;
+    }
+    15% {
+        opacity: 0.85;
+    }
+    20% {
+        opacity: 0.9;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes pixelate {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 50px 50px;
+    }
+}
+
+@keyframes borderFlash {
+    0%, 100% {
+        border-color: var(--terminal-border);
+    }
+    50% {
+        border-color: var(--terminal-border-glow);
+    }
+}

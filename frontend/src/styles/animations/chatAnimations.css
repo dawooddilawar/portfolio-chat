@@ -1,0 +1,73 @@
+/* src/styles/animations/chatAnimations.css */
+
+@keyframes bubbleAppear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bubble-enter {
+    animation: bubbleAppear 0.3s ease-out forwards;
+}
+
+.message-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    font-size: 12px;
+    animation: bubbleAppear 0.3s ease-out forwards;
+}
+
+.message-content {
+    border: 1px solid #00FF2A;
+    border-radius: 4px;
+    padding: 8px;
+    color: #00FF2A;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    max-width: 60%;
+}
+
+.message-content.header {
+    border: none;
+    padding: 0;
+    font-weight: bold;
+}
+
+.message-content a {
+    color: #00FF2A;
+    text-decoration: underline;
+    transition: opacity 0.2s ease;
+}
+
+.message-content a:hover {
+    opacity: 0.8;
+}
+
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background: #00FF2A;
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+.typing-dot:nth-child(1) { animation: dotPulse 1.5s infinite 0s; }
+.typing-dot:nth-child(2) { animation: dotPulse 1.5s infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: dotPulse 1.5s infinite 0.4s; }
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}

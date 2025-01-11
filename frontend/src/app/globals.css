@@ -1,0 +1,83 @@
+/* src/app/globals.css */
+
+@import '@/styles/animations/keyframes.css';
+@import '@/styles/animations/messageAnimations.css';
+@import '@/styles/effects/terminal.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root[data-theme="dark"] {
+  --foreground: 255, 255, 255;
+  --background-start: 0, 0, 0;
+  --background-end: 0, 0, 0;
+  --primary: #00FF2A;
+  --primary-hover: #00cc22;
+  --chat-bg: rgba(0, 0, 0, 0.7);
+  --scrollbar-bg: #000000;
+  --scrollbar-thumb: #00FF2A;
+  --scrollbar-hover: #00cc22;
+}
+
+:root[data-theme="light"] {
+  --foreground: 0, 0, 0;
+  --background-start: 255, 255, 255;
+  --background-end: 240, 240, 240;
+  --primary: #008F1C;
+  --primary-hover: #007517;
+  --chat-bg: rgba(255, 255, 255, 0.9);
+  --scrollbar-bg: #ffffff;
+  --scrollbar-thumb: #008F1C;
+  --scrollbar-hover: #007517;
+}
+
+body {
+  color: rgb(var(--foreground));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(var(--background-end))
+  )
+  rgb(var(--background-start));
+}
+
+/* Webkit browsers (Chrome, Safari, newer versions of Opera) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+}
+
+/* For Edge */
+*::-ms-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-ms-scrollbar-track {
+  background: #000000;
+}
+
+*::-ms-scrollbar-thumb {
+  background: #00FF2A;
+  border-radius: 4px;
+}

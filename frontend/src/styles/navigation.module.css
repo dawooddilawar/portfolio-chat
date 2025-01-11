@@ -1,0 +1,24 @@
+.nav {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.links {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.link {
+  color: var(--primary);
+  transition: all 0.2s ease-in-out;
+}
+
+.link:hover {
+  color: var(--primary-hover);
+  transform: scale(1.1);
+} 

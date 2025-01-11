@@ -1,0 +1,84 @@
+/* src/styles/effects/terminal.css */
+
+:root {
+    --terminal-bg: #0a0a0a;
+    --terminal-border: #30363d;
+    --terminal-border-glow: #4d9375;
+    --terminal-text: #e2e2e2;
+    --terminal-glow: #4d9375;
+    --scanline-opacity: 0.15;
+    --scanline-speed: 6s;
+    --flicker-duration: 2s;
+    --border-width: 1px;
+}
+
+.terminal-glow {
+    text-shadow: 0 0 8px var(--terminal-glow);
+}
+
+.terminal-frame {
+    position: relative;
+    background-color: var(--terminal-bg);
+    border: var(--border-width) solid var(--terminal-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.terminal-frame::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+            180deg,
+            transparent 0%,
+            rgba(32, 32, 32, 0.2) 50%,
+            transparent 100%
+    );
+    animation: scanline var(--scanline-speed) linear infinite;
+    opacity: var(--scanline-opacity);
+    pointer-events: none;
+}
+
+.terminal-frame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.15) 0px,
+            rgba(0, 0, 0, 0.15) 1px,
+            transparent 1px,
+            transparent 2px
+    );
+    pointer-events: none;
+}
+
+.terminal-border {
+    position: absolute;
+    inset: 0;
+    border: var(--border-width) solid var(--terminal-border);
+    border-radius: 8px;
+    animation: borderFlash 4s infinite;
+    pointer-events: none;
+}
+
+.pixelated-border {
+    background-image: linear-gradient(
+            45deg,
+            var(--terminal-border) 25%,
+            transparent 25%
+    ),
+    linear-gradient(
+            -45deg,
+            var(--terminal-border) 25%,
+            transparent 25%
+    );
+    background-size: 4px 4px;
+    animation: pixelate 60s linear infinite;
+}
