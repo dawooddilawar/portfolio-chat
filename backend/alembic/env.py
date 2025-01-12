@@ -6,6 +6,10 @@ from sqlalchemy import pool
 from alembic import context
 import os
 from dotenv import load_dotenv
+import logging
+
+# Set up logging
+logger = logging.getLogger("alembic.env")
 
 # Load environment variables
 load_dotenv()
@@ -14,11 +18,17 @@ load_dotenv()
 config = context.config
 
 db_url = os.getenv("DATABASE_URL")
-if db_url:
-    # Ensure we use the psycopg2 driver
-    if db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-    config.set_main_option("sqlalchemy.url", db_url)
+if not db_url:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
+logger.info(f"Initial DATABASE_URL: {db_url}")
+
+# Ensure we use the psycopg2 driver
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    logger.info(f"Modified DATABASE_URL with psycopg2 driver: {db_url}")
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -53,6 +63,8 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
+    logger.info(f"Running offline migrations with URL: {url}")
+    
     context.configure(
         url=url,
         target_metadata=target_metadata,
