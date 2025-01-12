@@ -26,6 +26,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     }, [messages, isTyping]);
 
     const renderMessageContent = (message: Message) => {
+        // Case 1: If message has explicit links array
         if (message.links) {
             let content = message.content;
             message.links.forEach(link => {
@@ -36,13 +37,26 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             });
             return <div dangerouslySetInnerHTML={{ __html: content }} />;
         }
+        
+        // Case 2: If the content is HTML (contains tags)
+        const containsHTML = /<[^>]*>/g.test(message.content);
+        if (containsHTML) {
+            // Add the same classes to any <a> tags in the content
+            const contentWithStyles = message.content.replace(
+                /<a\s/g,
+                '<a class="text-[#00FF2A] hover:opacity-80" target="_blank" rel="noopener noreferrer" '
+            );
+            return <div dangerouslySetInnerHTML={{ __html: contentWithStyles }} />;
+        }
+        
+        // Case 3: Plain text content
         return message.content;
     };
 
     const getMessageStyle = (message: Message) => {
         let className = 'message-wrapper';
         className += message.isLastInGroup ? ' mb-[30px]' : ' mb-[10px]';
-        className += message.type === 'user' ? ' flex-row-reverse' : '';
+        className += message.type === 'user' ? ' flex-row-reverse chat-bubble-user' : '';
         return className;
     };
 

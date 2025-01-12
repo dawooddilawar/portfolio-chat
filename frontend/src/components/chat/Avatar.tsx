@@ -7,13 +7,15 @@ interface AvatarProps {
     type: 'user' | 'assistant' | 'system' | 'header';
 }
 
+
+
 // Images should be saved in frontend/public/images/
 export const Avatar: React.FC<AvatarProps> = ({ className = '', type }) => {
     const imageSrc = type === 'assistant' ? '/images/assistant.png' : '/images/user.jpg';
     
     return (
         <div
-            className={`w-8 h-8 rounded-full flex-shrink-0 overflow-hidden avatar-border ${className}`}
+            className={`w-8 h-8 rounded-full flex-shrink-0 overflow-hidden avatar-border ${className} ${type === 'user' ? 'avatar-border-secondary' : ''}`}
             aria-hidden="true"
         >
             <img 

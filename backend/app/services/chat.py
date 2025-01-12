@@ -3,7 +3,6 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.core.logger import setup_logger
-from app.services.llm import LLMService
 from app.core.exceptions import ChatProcessingError
 from app.services.rag_service import RAGService
 

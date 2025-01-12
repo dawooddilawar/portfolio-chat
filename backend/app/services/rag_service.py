@@ -13,6 +13,7 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from app.core.config import get_settings
+from app.config import CONTACT_DETAILS
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -65,11 +66,20 @@ class RAGService:
         # Move templates to separate constants or config file
         CONTEXT_TEMPLATE = (
             "Here is information about me from my resume and portfolio:\n"
+            "You are acting as me, the portfolio owner. Try to keep a profesional yet casual tone, keep the response short and concise."
+            "I have also provided my contact details below, when prompted for contact details, use these."
             "{context}\n\n"
             "Use this information to provide a detailed and accurate response. "
             "If the information provided doesn't contain enough details to fully "
             "answer the question, acknowledge what you do know from the context "
             "and indicate what details are not available."
+            "Do not end include extra information in the response, exclude things like \"If you have any more questions or need further details, feel free to ask!\" stay true to the question."
+            "I have also provided my contact details below, when prompted for contact details, use these. I want to be reachable by mobile phone as well, so when prompted for phone number, use this."
+            "If the contact details are links, e.g. github, twitter, resume, etc. provide the link as an <a href='link'>link</a>, with the text being the name of the link."
+            f"My contact details are: Mobile Phone: {CONTACT_DETAILS['phone_number']}, "
+            f"GitHub: {CONTACT_DETAILS['github']}, "
+            f"Twitter: {CONTACT_DETAILS['twitter']}, "
+            f"Resume: {CONTACT_DETAILS['resume']}"
         )
 
         QUESTION_TEMPLATE = (

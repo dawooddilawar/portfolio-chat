@@ -45,7 +45,10 @@ export const projectPhase: Message[] = [
         type: 'assistant',
         groupId: 2,
         isLastInGroup: true,
-        width: 411
+        width: 411,
+        links: [
+            { text: 'Design Space AI', url: 'https://designspaceai.dawooddilawar.com' }
+        ]
     }
 ];
 
