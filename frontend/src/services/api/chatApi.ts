@@ -1,5 +1,4 @@
 import { Message } from '@/config/messages';
-import { ChatMessage } from '@/types/chat';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
