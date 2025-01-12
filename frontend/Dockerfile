@@ -11,7 +11,7 @@ RUN npm install
 COPY . .
 
 # Build the app
-ENV NEXT_PUBLIC_API_URL=http://api.dawooddilawar.com:8000
+ENV NEXT_PUBLIC_API_URL=https://api.dawooddilawar.com:8000
 RUN npm run build
 
 # Production stage
