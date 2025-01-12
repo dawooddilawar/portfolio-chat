@@ -29,6 +29,7 @@ services:
       - ./backend:/app
     networks:
       - internal-network
+      - backend-network 
     depends_on:
       - postgres
     restart: always
@@ -61,3 +62,5 @@ networks:
     external: true
   internal-network:
     internal: true
+  backend-network:
+    driver: bridge
