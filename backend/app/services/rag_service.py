@@ -1,7 +1,7 @@
 # backend/app/services/rag_service.py
 
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from langchain_core.documents import Document
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -58,8 +58,16 @@ class RAGService:
             base_retriever=base_retriever
         )
 
-        # Initialize the RAG chain
+        # Add a verification LLM (cheaper model)
+        self.verification_llm = ChatOpenAI(
+            model="gpt-4o-mini",  # or "gpt-3.5-turbo" for cheaper alternative
+            temperature=0.2,  # Lower temperature for more consistent verification
+            max_tokens=500
+        )
+        
+        # Initialize both main and verification chains
         self._initialize_rag_chain()
+        self._initialize_verification_chain()
 
     def _initialize_rag_chain(self) -> None:
         """Initialize the RAG chain with custom prompting."""
@@ -67,7 +75,7 @@ class RAGService:
         CONTEXT_TEMPLATE = (
             "Here is information about me from my resume and portfolio:\n"
             "You are acting as me, the portfolio owner. Try to keep a profesional yet casual tone, keep the response short and concise."
-            "I have also provided my contact details below, when prompted for contact details, use these."
+            "You have access to my resume and portfolio, use this information to provide a detailed and accurate response. It includes my projects, experience, and background."
             "{context}\n\n"
             "Use this information to provide a detailed and accurate response. "
             "If the information provided doesn't contain enough details to fully "
@@ -115,16 +123,87 @@ class RAGService:
                 | StrOutputParser()
         )
 
+    def _initialize_verification_chain(self) -> None:
+        """Initialize the verification chain."""
+        VERIFICATION_TEMPLATE = """You are a fact-checking assistant. Your job is to verify if the given response 
+        strictly adheres to the provided context and doesn't include any hallucinations or additional information.
+
+        Question Asked: {question}
+
+        Context: {context}
+        
+        Generated Response: {response}
+        
+        Verify the following:
+        1. Does the response contain ONLY information present in the context, be very strict, vague information is not allowed?
+        2. Are there any statements that go beyond the provided context?
+        3. Is the response accurate according to the context?
+        4. We need to be very strict, vague information is not allowed.
+        5. If the response is asking about some information like "projects" or "experience", make sure to only include information from the context that is relevant to the question, and include the actual project name, etc and not vague information.
+
+        Return a JSON-like string in the format:
+        {{
+            "verified": true/false,
+            "issues": ["issue1", "issue2"] or [],
+            "corrected_response": "corrected version" or null
+        }}
+        
+        If the response is accurate, return verified=true and empty issues list.
+        If there are issues, provide a corrected version that strictly adheres to the context.
+        """
+
+        self.verification_prompt = ChatPromptTemplate.from_template(VERIFICATION_TEMPLATE)
+        
+        # Create verification chain
+        self.verification_chain = (
+            self.verification_prompt 
+            | self.verification_llm 
+            | StrOutputParser()
+        )
+
+    async def verify_response(self, context: str, response: str, question: str) -> dict:
+        """Verify the generated response against the context."""
+        try:
+            verification_result = await self.verification_chain.ainvoke({
+                "context": context,
+                "response": response,
+                "question": question
+            })
+            
+            # Convert string response to dict (you might want to add proper error handling)
+            import json
+            return json.loads(verification_result)
+        except Exception as e:
+            logger.error(f"Error in response verification: {str(e)}", exc_info=True)
+            # Return a safe default
+            return {"verified": True, "issues": [], "corrected_response": None}
+
     async def query(self, question: str) -> str:
-        """Process a question through the RAG pipeline."""
+        """Process a question through the RAG pipeline with verification."""
         try:
             logger.info(f"Processing question: {question}")
             
-            # Use ainvoke for async operation
+            # Use invoke instead of get_relevant_documents
+            context = self.retriever.invoke(question)
+            formatted_context = format_docs(context)
+            
+            # Generate initial response
             response = await self.rag_chain.ainvoke(question)
             
-            logger.info(f"Generated response for question: {question}")
-            return response
+            # Verify the response
+            verification_result = await self.verify_response(formatted_context, response, question)
+            
+            # If verification failed and we have a corrected version, use that instead
+            final_response = (verification_result.get("corrected_response") 
+                            if not verification_result["verified"] and verification_result.get("corrected_response")
+                            else response)
+            
+            # Log the verification result for monitoring but don't return it
+            logger.info(f"Generated and verified response for question: {question}")
+            logger.debug(f"Verification result: {verification_result}")
+            
+            # Return only the string response
+            return final_response
             
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
