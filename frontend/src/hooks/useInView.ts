@@ -2,7 +2,7 @@
 
 import { useState, useEffect, RefObject } from 'react';
 
-export const useInView = (ref: RefObject<Element>) => {
+export const useInView = (ref: RefObject<Element | null>) => {
     const [isInView, setIsInView] = useState(false);
 
     useEffect(() => {
