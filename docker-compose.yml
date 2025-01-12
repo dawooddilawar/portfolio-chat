@@ -60,4 +60,4 @@ networks:
   proxy-network:
     external: true
   internal-network:
-    internal: true
+    driver: bridge
