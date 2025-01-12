@@ -78,7 +78,7 @@ export const contactPhase: Message[] = [
         width: 'auto',
         links: [
             { text: 'Github', url: 'https://github.com/dawooddilawar' },
-            { text: 'Twitter', url: 'https://twitter.com/in/dawooddilawar' },
+            { text: 'Twitter', url: 'https://x.com/dawooddilawar1' },
             { text: 'email', url: 'mailto:dawoodiliawar94@gmail.com' }
         ]
     }
