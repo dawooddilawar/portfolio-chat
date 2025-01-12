@@ -24,6 +24,9 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    working_dir: /app
+    volumes:
+      - ./backend:/app
     networks:
       - internal-network
     depends_on:
