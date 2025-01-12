@@ -1,0 +1,14 @@
+.blog-container {
+    text-align: center;
+    margin: 2rem 0;
+    color: var(--primary);
+}
+
+.blog-post {
+    margin: 1rem 0;
+}
+
+.read-more {
+    color: var(--primary);
+    text-decoration: underline;
+} 

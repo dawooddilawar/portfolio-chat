@@ -5,6 +5,7 @@ import { HiDocumentText } from 'react-icons/hi'
 import { BsSun, BsMoon } from 'react-icons/bs'
 import styles from '@/styles/navigation.module.css'
 import { useTheme } from '@/contexts/ThemeContext'
+import Link from 'next/link'
 
 const Navigation = () => {
   const { theme, toggleTheme } = useTheme()
@@ -35,6 +36,7 @@ const Navigation = () => {
         >
           <HiDocumentText size={24} />
         </a>
+        <Link href="/blog" className={styles.link}>Blog</Link>
       </div>
     </nav>
   )
