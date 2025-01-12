@@ -17,7 +17,7 @@ import { useChatStore } from '@/store/chatStore';
 import '@/styles/chat.css';
 
 export const Chat: React.FC = () => {
-    const chatRef = useRef<HTMLDivElement>(null);
+    const chatRef = useRef<Element>(null);
     const inView = useInView(chatRef);
     const animationStarted = useRef(false);
     const { isLoading } = useChatStore();
