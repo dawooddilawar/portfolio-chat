@@ -13,7 +13,7 @@ export const Avatar: React.FC<AvatarProps> = ({ className = '', type }) => {
     
     return (
         <div
-            className={`w-8 h-8 rounded-full flex-shrink-0 border-2 border-[#00FF2A] overflow-hidden ${className}`}
+            className={`w-8 h-8 rounded-full flex-shrink-0 overflow-hidden avatar-border ${className}`}
             aria-hidden="true"
         >
             <img 

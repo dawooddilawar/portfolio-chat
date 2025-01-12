@@ -25,10 +25,12 @@ export default function RootLayout({
     return (
         <html lang="en">
         <body className={`${overpassMono.className}`}>
-            <ThemeProvider>
-                <Navigation />
-                {children}
-            </ThemeProvider>
+            <main className="min-h-screen">
+                <ThemeProvider>
+                    <Navigation />
+                    {children}
+                </ThemeProvider>
+            </main>
         </body>
         </html>
     );

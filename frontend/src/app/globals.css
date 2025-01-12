@@ -22,7 +22,7 @@
 
 :root[data-theme="light"] {
   --foreground: 0, 0, 0;
-  --background-start: 255, 255, 255;
+  --background-start: #f1f2f6;
   --background-end: 240, 240, 240;
   --primary: #008F1C;
   --primary-hover: #007517;

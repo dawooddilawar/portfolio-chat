@@ -24,10 +24,10 @@
 }
 
 .message-content {
-    border: 1px solid #00FF2A;
+    border: 1px solid var(--primary);
     border-radius: 4px;
     padding: 8px;
-    color: #00FF2A;
+    color: var(--primary);
     white-space: pre-wrap;
     line-height: 1.5;
     max-width: 60%;
@@ -40,7 +40,7 @@
 }
 
 .message-content a {
-    color: #00FF2A;
+    color: var(--primary);
     text-decoration: underline;
     transition: opacity 0.2s ease;
 }
@@ -58,7 +58,7 @@
 .typing-dot {
     width: 6px;
     height: 6px;
-    background: #00FF2A;
+    background: var(--primary);
     border-radius: 50%;
     opacity: 0.3;
 }
