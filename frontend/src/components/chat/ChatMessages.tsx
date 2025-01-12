@@ -13,11 +13,14 @@ interface ChatMessagesProps {
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
-                                                              initialMessages = [],
-                                                              isTyping = false
-                                                          }) => {
+    initialMessages = [],
+    isTyping = false
+}) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { messages } = useChatStore();
+
+    // Always include initial messages, then add store messages
+    const displayMessages = [...initialMessages, ...messages];
 
     console.log('Current messages in ChatMessages:', messages); // Debug log
 
@@ -60,11 +63,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         return className;
     };
 
-    const allMessages = [...initialMessages, ...messages];
-
     return (
         <>
-            {allMessages.map((message) => (
+            {displayMessages.map((message) => (
                 <div
                     key={message.id}
                     className={getMessageStyle(message)}

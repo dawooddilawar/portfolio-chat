@@ -8,7 +8,7 @@ const chatApi = new ChatApi();
 export const useChat = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { addMessage } = useChatStore();
+    const { addMessage, clearMessages } = useChatStore();
 
 
     const sendMessage = useCallback(async (content: string) => {
@@ -16,6 +16,11 @@ export const useChat = () => {
         setError(null);
 
         try {
+
+            if (content.trim().toLowerCase() === '/clear') {
+                clearMessages();
+                return;
+            }
             // Create user message
             const userMessage: Message = {
                 id: `user-${Date.now()}`,

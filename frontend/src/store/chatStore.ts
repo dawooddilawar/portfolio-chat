@@ -35,4 +35,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
         console.log('chatStore.clearMessages called');
         set({ messages: [] });
     },
+    
 }));
