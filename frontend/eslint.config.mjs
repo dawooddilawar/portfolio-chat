@@ -28,14 +28,15 @@ const eslintConfig = [
       "@typescript-eslint/no-non-null-assertion": "off",
       "react-hooks/exhaustive-deps": "warn"
     },
-    ignorePatterns: [
-      ".next/*",
-      "node_modules/*",
-      "public/*",
-      "styles/*",
-      "coverage/*",
-      "dist/*",
-      ".eslintrc.js"
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    ignores: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/public/**",
+      "**/styles/**",
+      "**/coverage/**",
+      "**/dist/**",
+      "**/.eslintrc.js"
     ]
   }
 ];
