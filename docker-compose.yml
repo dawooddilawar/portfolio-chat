@@ -30,6 +30,7 @@ services:
       - ./backend:/app
     networks:
       - proxy-network
+      - internal-network
     depends_on:
       - postgres
     restart: always
@@ -45,7 +46,7 @@ services:
       - ./init-scripts:/docker-entrypoint-initdb.d
       - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
     networks:
-      - proxy-network
+      - internal-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -59,3 +60,5 @@ volumes:
 networks:
   proxy-network:
     external: true
+  internal-network:
+    internal: true
