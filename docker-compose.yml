@@ -9,7 +9,7 @@ services:
     environment:
       - VIRTUAL_HOST=dawooddilawar.com
       - LETSENCRYPT_HOST=dawooddilawar.com
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=https://api.dawooddilawar.com
     networks:
       - proxy-network
       - internal-network
@@ -24,12 +24,16 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - VIRTUAL_HOST=api.dawooddilawar.com
+      - VIRTUAL_PORT=8000
+      - LETSENCRYPT_HOST=api.dawooddilawar.com
     working_dir: /app
     volumes:
       - ./backend:/app
     networks:
+      - proxy-network
       - internal-network
-      - backend-network 
+      - backend-network
     depends_on:
       - postgres
     restart: always
