@@ -20,5 +20,8 @@ COPY . .
 COPY start.sh .
 RUN chmod +x start.sh
 
+# Set Python path
+ENV PYTHONPATH=/app
+
 # Run the application
 CMD ["./start.sh"]
