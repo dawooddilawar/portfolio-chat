@@ -13,8 +13,28 @@ const overpassMono = Overpass_Mono({
 });
 
 export const metadata: Metadata = {
-    title: 'Interactive Portfolio Chat',
-    description: 'A terminal-styled portfolio with AI-powered chat capabilities',
+    title: 'Dawood Dilawar - Software Engineer Portfolio',
+    description: 'Explore the portfolio of Dawood Dilawar, a software engineer specializing in modern web applications, AI integration, and more.',
+    openGraph: {
+        title: 'Dawood Dilawar - Software Engineer Portfolio',
+        description: 'Explore the portfolio of Dawood Dilawar, a software engineer specializing in modern web applications, AI integration, and more.',
+        url: 'https://dawooddilawar.com',
+        images: [
+            {
+                url: 'https://dawooddilawar.com/images/assistant.png',
+                width: 800,
+                height: 600,
+                alt: 'Dawood Dilawar Portfolio',
+            },
+        ],
+        siteName: 'Dawood Dilawar\'s Portfolio',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Dawood Dilawar - Software Engineer Portfolio',
+        description: 'Explore the portfolio of Dawood Dilawar, a software engineer specializing in modern web applications, AI integration, and more.',
+        images: ['https://dawooddilawar.com/images/assistant.png'],
+    },
 };
 
 export default function RootLayout({
