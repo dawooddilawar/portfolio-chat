@@ -36,7 +36,7 @@ services:
     restart: always
 
   postgres:
-    image: ankane/pgvector:v0.5.1
+    image: pgvector/pgvector:pg15
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -60,4 +60,4 @@ networks:
   proxy-network:
     external: true
   internal-network:
-    # internal: true
+    internal: true
