@@ -33,7 +33,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.db.session import SessionLocal
 from app.services.document_processor import DocumentProcessor
-from app.models.portfolio import PortfolioChunk
 from app.services.rag_service import RAGService
 from app.core.config import get_settings
 BATCH_SIZE = 10  # Number of embeddings to generate/store at once
