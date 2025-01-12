@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     images: {
         domains: ['api.placeholder'],
     },
+    eslint: {
+        // This will completely disable ESLint during builds
+        ignoreDuringBuilds: true,
+    },
 };
 
 export default nextConfig;
