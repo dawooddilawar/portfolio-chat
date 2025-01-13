@@ -10,6 +10,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
+COPY google95b836b3564f0edc.html ./public/
+
 # Build the app
 ENV NEXT_PUBLIC_API_URL=https://api.dawooddilawar.com
 RUN npm run build
