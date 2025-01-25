@@ -14,6 +14,7 @@ from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from app.core.config import get_settings
 from app.config import CONTACT_DETAILS
+import json
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ class RAGService:
             search_type="similarity",
             search_kwargs={"k": 5}
         )
+
         self.retriever = ContextualCompressionRetriever(
             base_compressor=compressor_pipeline,
             base_retriever=base_retriever
@@ -60,8 +62,8 @@ class RAGService:
 
         # Add a verification LLM (cheaper model)
         self.verification_llm = ChatOpenAI(
-            model="gpt-4o-mini",  # or "gpt-3.5-turbo" for cheaper alternative
-            temperature=0.2,  # Lower temperature for more consistent verification
+            model="gpt-4o-mini",
+            temperature=0.2,
             max_tokens=500
         )
         
@@ -170,8 +172,7 @@ class RAGService:
                 "question": question
             })
             
-            # Convert string response to dict (you might want to add proper error handling)
-            import json
+            
             return json.loads(verification_result)
         except Exception as e:
             logger.error(f"Error in response verification: {str(e)}", exc_info=True)

@@ -21,6 +21,7 @@ export const useChat = () => {
                 clearMessages();
                 return;
             }
+            
             // Create user message
             const userMessage: Message = {
                 id: `user-${Date.now()}`,

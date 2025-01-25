@@ -32,32 +32,6 @@ class ChatService:
             logger.error(f"Error processing chat message: {str(e)}", exc_info=True)
             raise ChatProcessingError(str(e))
 
-    async def generate_response(self, query: str, context: Optional[str] = None) -> str:
-        """Generate a response using the LLM."""
-        logger.info(f"Generating response for query with context? {bool(context)}")
-
-        if context:
-            prompt = f"""Based on the following context about me:
-
-{context}
-
-Please answer the following question:
-{query}
-
-If the context doesn't contain relevant information to answer the question, 
-please say so instead of making assumptions."""
-        else:
-            prompt = f"""Please answer the following question about you:
-{query}
-
-If you don't have enough information to answer accurately, 
-please let the user know that."""
-
-        logger.info(f"Generated prompt: {prompt[:200]}...")  # Log first 200 chars
-        response = await self.llm_service.generate_response(prompt)
-        logger.info(f"LLM response: {response}")
-        return response
-
     async def handle_command(self, message: str) -> str:
         """Handle special commands."""
         command = message[1:].lower().split()[0]
@@ -80,10 +54,10 @@ please let the user know that."""
 
     async def _help_command(self) -> str:
         return """Available commands:
-/help - Show this help message
-/about - Learn about me
-/projects - View my projects
-/clear - Clear chat history"""
+                /help - Show this help message
+                /about - Learn about me
+                /projects - View my projects
+                /clear - Clear chat history"""
 
     async def _about_command(self) -> str:
         return await self.process_message("Tell me about yourself")
