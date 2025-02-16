@@ -13,8 +13,9 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from app.core.config import get_settings
-from app.config import CONTACT_DETAILS
+from app.config import CONTACT_DETAILS, PERSONALITY_SETTINGS
 import json
+import datetime
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -67,9 +68,22 @@ class RAGService:
             max_tokens=500
         )
         
-        # Initialize both main and verification chains
+        self.personality = self.get_current_personality()
         self._initialize_rag_chain()
         self._initialize_verification_chain()
+
+    def get_current_personality(self) -> str:
+        """Determine the current personality based on time and day."""
+        now = datetime.datetime.now()
+        if now.weekday() >= 5:  # Saturday and Sunday
+            return "weekend"
+        hour = now.hour
+        if 6 <= hour < 12:
+            return "morning"
+        elif 22 <= hour or hour < 6:
+            return "late_night"
+        else:
+            return "base"
 
     def _initialize_rag_chain(self) -> None:
         """Initialize the RAG chain with custom prompting."""
@@ -106,23 +120,30 @@ class RAGService:
             "Answer:"
         )
 
-        # Set up the RAG pipeline
-        context_formatter = ChatPromptTemplate.from_template(CONTEXT_TEMPLATE)
+        # Retrieve the personality system prompt from config based on current personality.
+        personality_config = PERSONALITY_SETTINGS.get(self.personality, PERSONALITY_SETTINGS["base"])
+        system_prompt = personality_config.get("system_prompt", "")
+
+        # Create the prompt templates (we use the same question template regardless of personality).
+        context_formatter = ChatPromptTemplate.from_template([
+            ("system", system_prompt),
+            ("user", CONTEXT_TEMPLATE)
+        ])
         question_prompt = ChatPromptTemplate.from_template(QUESTION_TEMPLATE)
 
         # Create the chain
         self.rag_chain = (
-                {
-                    "context": self.retriever | format_docs,
-                    "question": RunnablePassthrough()
-                }
-                | RunnableParallel(
-            formatted_context=lambda x: context_formatter.format(context=x["context"]),
-            question=lambda x: x["question"]
-        )
-                | question_prompt
-                | self.llm
-                | StrOutputParser()
+            {
+                "context": self.retriever | format_docs,
+                "question": RunnablePassthrough()
+            }
+            | RunnableParallel(
+                formatted_context=lambda x: context_formatter.format(context=x["context"]),
+                question=lambda x: x["question"]
+            )
+            | question_prompt
+            | self.llm
+            | StrOutputParser()
         )
 
     def _initialize_verification_chain(self) -> None:
