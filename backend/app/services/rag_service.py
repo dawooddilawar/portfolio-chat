@@ -124,11 +124,11 @@ class RAGService:
         personality_config = PERSONALITY_SETTINGS.get(self.personality, PERSONALITY_SETTINGS["base"])
         system_prompt = personality_config.get("system_prompt", "")
 
+        # Concatenate the personality system prompt with the base context template.
+        full_context_template = f"{system_prompt}\n{CONTEXT_TEMPLATE}"
+
         # Create the prompt templates (we use the same question template regardless of personality).
-        context_formatter = ChatPromptTemplate.from_template([
-            ("system", system_prompt),
-            ("user", CONTEXT_TEMPLATE)
-        ])
+        context_formatter = ChatPromptTemplate.from_template(full_context_template)
         question_prompt = ChatPromptTemplate.from_template(QUESTION_TEMPLATE)
 
         # Create the chain
