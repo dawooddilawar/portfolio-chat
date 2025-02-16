@@ -22,11 +22,11 @@ export const useAnimationSequence = (phases: Message[][]) => {
             setVisibleMessages(prev => [...prev, currentPhase[0]]);
             await new Promise(resolve => setTimeout(resolve, 500));
             setVisibleMessages(prev => [...prev, currentPhase[1]]);
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 5000));
         } else {
             // Other phases
             setIsTyping(true);
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 5000));
             setIsTyping(false);
 
             for (const message of currentPhase) {

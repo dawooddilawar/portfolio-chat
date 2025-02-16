@@ -13,7 +13,12 @@ services:
       - proxy-network
     depends_on:
       - backend
-    restart: always
+    deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+    restart: unless-stopped
 
   backend:
     build:
@@ -33,7 +38,12 @@ services:
       - internal-network
     depends_on:
       - postgres
-    restart: always
+    deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+    restart: unless-stopped
 
   postgres:
     image: pgvector/pgvector:pg15
