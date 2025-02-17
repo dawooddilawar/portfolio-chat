@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Upload, X, FileText, Check } from 'lucide-react'
+import '@/styles/chat.css';
 
 interface FileWithPreview extends File {
   preview?: string
