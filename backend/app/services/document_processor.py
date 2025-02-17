@@ -71,10 +71,10 @@ class DocumentProcessor:
             # Load document based on file type
             if path.suffix.lower() == '.pdf':
                 docs = await self._load_pdf(path)
-            elif path.suffix.lower() == '.tex':
-                docs = await self._load_latex(path)
+            elif path.suffix.lower() in ['.tex', '.md']:
+                docs = await self._load_with_unstructured(path)
             else:
-                raise ValueError(f"Unsupported file type: {path.suffix}")
+                raise ValueError(f"Unsupported file type: {path.suffix}. Supported types: .pdf, .tex, .md")
 
             # Clean and preprocess documents
             cleaned_docs = self._clean_documents(docs)
@@ -94,9 +94,9 @@ class DocumentProcessor:
         loader = PyMuPDFLoader(str(path))
         return loader.load()
 
-    async def _load_latex(self, path: Path) -> List[Document]:
-        """Load LaTeX using Unstructured."""
-        # First use Unstructured to partition the document
+    async def _load_with_unstructured(self, path: Path) -> List[Document]:
+        """Load documents using Unstructured's partition capability."""
+        # Use Unstructured to partition the document
         elements = partition(str(path))
 
         # Convert elements to LangChain documents with metadata
