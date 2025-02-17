@@ -38,7 +38,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
 
             # Process documents
             processor = DocumentProcessor()
-            await processor.process_documents(file_paths, clear_existing=False)
+            await processor.process_documents(file_paths, clear_existing=True)
 
         return {
             "message": "Files processed successfully",
@@ -64,10 +64,10 @@ async def list_documents():
         query = text("""
             SELECT DISTINCT ON (cmetadata->>'source') 
                 cmetadata->>'source' as filename,
-                created_at as processed_date
+                timestamp as processed_date
             FROM langchain_pg_embedding
             WHERE collection_name = 'portfolio_chunks'
-            ORDER BY cmetadata->>'source', created_at DESC;
+            ORDER BY cmetadata->>'source', timestamp DESC;
         """)
         
         result = db.execute(query)

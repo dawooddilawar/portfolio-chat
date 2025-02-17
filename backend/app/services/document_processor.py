@@ -3,6 +3,7 @@
 from typing import List, Optional
 import logging
 from pathlib import Path
+import os
 
 from langchain_core.documents import Document
 from langchain_community.document_loaders import UnstructuredFileLoader, TextLoader
@@ -46,7 +47,8 @@ class DocumentProcessor:
 
             # Clear existing vectors if requested
             if clear_existing:
-                await self._clear_vectors()
+                filenames = [os.path.basename(path) for path in file_paths]
+                await self.clear_document_vectors(filenames)
 
             all_documents = []
             for file_path in file_paths:
@@ -178,6 +180,47 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.error(f"Error storing documents in vector store: {str(e)}", exc_info=True)
+            raise
+
+    async def _clear_document_vectors(self, filenames: List[str]) -> dict:
+        """
+        Clear vectors for specific documents if they exist.
+        
+        Args:
+            filenames: List of document filenames to clear
+            
+        Returns:
+            dict: Summary of cleared and not found documents
+        """
+        try:
+            vector_store = PGVector.from_existing_index(
+                embedding=self.embeddings,
+                collection_name=self.collection_name,
+                connection_string=self.connection_string,
+            )
+
+            results = {
+                "cleared": [],
+                "not_found": []
+            }
+
+            # Get existing documents
+            existing_docs = vector_store.get_all_documents()
+            existing_sources = {doc.metadata.get('source') for doc in existing_docs}
+
+            for filename in filenames:
+                if filename in existing_sources:
+                    vector_store.delete(filter={"source": filename})
+                    results["cleared"].append(filename)
+                    logger.info(f"Cleared vectors for document: {filename}")
+                else:
+                    results["not_found"].append(filename)
+                    logger.info(f"Document not found: {filename}")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error clearing document vectors: {str(e)}", exc_info=True)
             raise
 
     async def _clear_vectors(self) -> None:
