@@ -2,7 +2,10 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import List
 import tempfile
 import os
+from datetime import datetime
 from app.services.document_processor import DocumentProcessor
+from app.db.session import SessionLocal
+from sqlalchemy import text
 
 router = APIRouter()
 
@@ -49,4 +52,73 @@ async def upload_files(files: List[UploadFile] = File(...)):
         raise HTTPException(
             status_code=500,
             detail=f"Error processing files: {str(e)}"
+        )
+
+@router.get("/documents")
+async def list_documents():
+    """
+    Get a list of all processed documents in the vector store.
+    """
+    try:
+        db = SessionLocal()
+        # Query to get distinct documents with their latest processed date
+        query = text("""
+            SELECT DISTINCT ON (metadata->>'source') 
+                metadata->>'source' as filename,
+                created_at as processed_date
+            FROM langchain_pg_embedding
+            WHERE collection_name = 'portfolio_chunks'
+            ORDER BY metadata->>'source', created_at DESC;
+        """)
+        
+        result = db.execute(query)
+        documents = [
+            {
+                "filename": row.filename,
+                "processed_date": row.processed_date.isoformat()
+            }
+            for row in result
+        ]
+        db.close()
+        return documents
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching documents: {str(e)}"
+        )
+
+@router.delete("/documents/{filename}")
+async def delete_document(filename: str):
+    """
+    Delete a specific document and its chunks from the vector store.
+    """
+    try:
+        db = SessionLocal()
+        # Delete all chunks for the specified document
+        query = text("""
+            DELETE FROM langchain_pg_embedding
+            WHERE collection_name = 'portfolio_chunks'
+            AND metadata->>'source' = :filename;
+        """)
+        
+        result = db.execute(query, {"filename": filename})
+        db.commit()
+        db.close()
+        
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document {filename} not found"
+            )
+            
+        return {
+            "message": f"Document {filename} deleted successfully",
+            "deleted_chunks": result.rowcount
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting document: {str(e)}"
         ) 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast, Toaster } from 'sonner'
 import { Upload, X, FileText, Check } from 'lucide-react'
+import { DocumentList } from './DocumentList'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -103,8 +104,8 @@ export function UploadKnowledge() {
       console.error('Upload error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to upload files', {
         style: {
-          background: 'var(--primary)',
-          color: 'black',
+          border: '1px solid var(--primary)',
+          color: 'var(--primary)',
         },
       })
     } finally {
@@ -113,73 +114,86 @@ export function UploadKnowledge() {
   }
 
   return (
-    <div className="space-y-4">
-      <Toaster />
-      <Card
-        {...getRootProps()}
-        className={`p-8 border-2 border-dashed cursor-pointer transition-colors
-          ${isDragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--primary)]'}`}
-      >
-        <input {...getInputProps()} />
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <Upload className="w-12 h-12 text-[var(--primary)]" />
-          <div className="text-center">
-            <p className="text-lg font-medium text-[var(--primary)]">
-              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
-            </p>
-            <p className="text-sm text-[var(--primary)]">
-              or click to select files
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <Toaster />
+        <Card
+          {...getRootProps()}
+          className={`p-8 border-2 border-dashed cursor-pointer transition-colors
+            ${isDragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--primary)]'}`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Upload className="w-12 h-12 text-[var(--primary)]" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-[var(--primary)]">
+                {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
+              </p>
+              <p className="text-sm text-[var(--primary)]">
+                or click to select files
+              </p>
+            </div>
+            <p className="text-xs text-[var(--primary)]">
+              Supported formats: PDF, MD
             </p>
           </div>
-          <p className="text-xs text-[var(--primary)]">
-            Supported formats: PDF, MD
-          </p>
-        </div>
-      </Card>
+        </Card>
 
-      {files.length > 0 && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            {files.map(file => (
-              <div
-                key={file.name}
-                className="flex items-center justify-between p-2 bg-[var(--primary)]/5 rounded"
-              >
-                <div className="flex items-center space-x-2">
-                  <FileText className="w-4 h-4 text-[var(--primary)]" />
-                  <span className="text-sm text-[var(--primary)]">{file.name}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeFile(file.name)}
-                  className="text-[var(--primary)] hover:text-[var(--primary-hover)]"
+        {files.length > 0 && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {files.map(file => (
+                <div
+                  key={file.name}
+                  className="flex items-center justify-between p-2 bg-[var(--primary)]/5 rounded"
                 >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-[var(--primary)]" />
+                    <span className="text-sm text-[var(--primary)]">{file.name}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeFile(file.name)}
+                    className="text-[var(--primary)] hover:text-[var(--primary-hover)]"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
 
-          <Button
-            className="w-full border-2 border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
-            onClick={handleUpload}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <>
-                <span className="mr-2">Uploading...</span>
-                <span className="animate-spin">⚪</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Upload Files
-              </>
-            )}
-          </Button>
+            <Button
+              className="w-full border-2 border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
+              onClick={handleUpload}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <span className="mr-2">Uploading...</span>
+                  <span className="animate-spin">⚪</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Upload Files
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-[var(--primary)]" />
         </div>
-      )}
+        <div className="relative flex justify-center">
+          <span className="bg-background px-2 text-sm text-[var(--primary)]">Processed Documents</span>
+        </div>
+      </div>
+
+      <DocumentList />
     </div>
   )
 }
