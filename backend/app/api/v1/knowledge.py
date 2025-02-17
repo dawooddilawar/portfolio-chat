@@ -6,7 +6,11 @@ from datetime import datetime
 from app.services.document_processor import DocumentProcessor
 from app.db.session import SessionLocal
 from sqlalchemy import text
+from langchain_community.vectorstores.pgvector import PGVector
+from langchain_openai import OpenAIEmbeddings
+from app.core.config import get_settings
 
+settings = get_settings()
 router = APIRouter()
 
 @router.post("/upload")
@@ -60,25 +64,39 @@ async def list_documents():
     Get a list of all processed documents in the vector store.
     """
     try:
-        db = SessionLocal()
-        query = text("""
-            SELECT DISTINCT ON (cmetadata->>'source') 
-                cmetadata->>'source' as filename,
-                timestamp as processed_date
-            FROM langchain_pg_embedding
-            WHERE collection_name = 'portfolio_chunks'
-            ORDER BY cmetadata->>'source', timestamp DESC;
-        """)
+        # Initialize PGVector store
+        vector_store = PGVector(
+            collection_name="portfolio_chunks",
+            connection_string=settings.get_database_url(),
+            embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
+        )
         
-        result = db.execute(query)
+        # Get all documents
+        docs = vector_store.get_all_documents()
+        
+        # Process documents to get unique sources with their latest document's metadata
+        document_map = {}
+        for doc in docs:
+            source = doc.metadata.get('source')
+            if source:
+                # Update only if this is a new document or has a more recent created_at
+                if source not in document_map or (
+                    doc.metadata.get('created_at', datetime.min) > 
+                    document_map[source].get('created_at', datetime.min)
+                ):
+                    document_map[source] = {
+                        'filename': os.path.basename(source),
+                        'created_at': doc.metadata.get('created_at', datetime.now())
+                    }
+        
         documents = [
             {
-                "filename": row.filename,
-                "processed_date": row.processed_date.isoformat()
+                "filename": data['filename'],
+                "processed_date": data['created_at'].isoformat() if isinstance(data['created_at'], datetime) else data['created_at']
             }
-            for row in result
+            for data in document_map.values()
         ]
-        db.close()
+        
         return documents
     except Exception as e:
         raise HTTPException(
@@ -92,26 +110,31 @@ async def delete_document(filename: str):
     Delete a specific document and its chunks from the vector store.
     """
     try:
-        db = SessionLocal()
-        query = text("""
-            DELETE FROM langchain_pg_embedding
-            WHERE collection_name = 'portfolio_chunks'
-            AND cmetadata->>'source' = :filename;
-        """)
+        # Initialize PGVector store
+        vector_store = PGVector(
+            collection_name="portfolio_chunks",
+            connection_string=settings.get_database_url(),
+            embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
+        )
         
-        result = db.execute(query, {"filename": filename})
-        db.commit()
-        db.close()
+        # Get all documents to check if the file exists
+        docs = vector_store.get_all_documents()
+        matching_docs = [doc for doc in docs if os.path.basename(doc.metadata.get('source', '')) == filename]
         
-        if result.rowcount == 0:
+        if not matching_docs:
             raise HTTPException(
                 status_code=404,
                 detail=f"Document {filename} not found"
             )
-            
+        
+        # Delete documents with matching source
+        deleted_count = vector_store.delete(
+            filter={"source": {"$regex": f".*{filename}$"}}
+        )
+        
         return {
             "message": f"Document {filename} deleted successfully",
-            "deleted_chunks": result.rowcount
+            "deleted_chunks": deleted_count
         }
     except Exception as e:
         if isinstance(e, HTTPException):
