@@ -61,14 +61,13 @@ async def list_documents():
     """
     try:
         db = SessionLocal()
-        # Query to get distinct documents with their latest processed date
         query = text("""
-            SELECT DISTINCT ON (metadata->>'source') 
-                metadata->>'source' as filename,
+            SELECT DISTINCT ON (cmetadata->>'source') 
+                cmetadata->>'source' as filename,
                 created_at as processed_date
             FROM langchain_pg_embedding
             WHERE collection_name = 'portfolio_chunks'
-            ORDER BY metadata->>'source', created_at DESC;
+            ORDER BY cmetadata->>'source', created_at DESC;
         """)
         
         result = db.execute(query)
@@ -94,11 +93,10 @@ async def delete_document(filename: str):
     """
     try:
         db = SessionLocal()
-        # Delete all chunks for the specified document
         query = text("""
             DELETE FROM langchain_pg_embedding
             WHERE collection_name = 'portfolio_chunks'
-            AND metadata->>'source' = :filename;
+            AND cmetadata->>'source' = :filename;
         """)
         
         result = db.execute(query, {"filename": filename})
@@ -121,4 +119,4 @@ async def delete_document(filename: str):
         raise HTTPException(
             status_code=500,
             detail=f"Error deleting document: {str(e)}"
-        ) 
+        )
