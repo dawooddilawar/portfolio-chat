@@ -1,10 +1,11 @@
+// app/components/upload-knowledge.tsx
 "use client"
 
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { toast } from 'sonner'
+import { toast, Toaster } from 'sonner'
 import { Upload, X, FileText, Check } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -21,7 +22,12 @@ export function UploadKnowledge() {
     const validFiles = acceptedFiles.filter(file => {
       const isValid = file.type === 'application/pdf' || file.name.endsWith('.md')
       if (!isValid) {
-        toast.error(`Invalid file type: ${file.name}. Only PDF and MD files are allowed.`)
+        toast.error(`Invalid file type: ${file.name}. Only PDF and MD files are allowed.`, {
+          style: {
+            background: 'var(--primary)',
+            color: 'black',
+          },
+        })
       }
       return isValid
     })
@@ -48,7 +54,12 @@ export function UploadKnowledge() {
 
   const handleUpload = async () => {
     if (files.length === 0) {
-      toast.error('Please select files to upload')
+      toast.error('Please select files to upload', {
+        style: {
+          background: 'var(--primary)',
+          color: 'black',
+        },
+      })
       return
     }
 
@@ -78,14 +89,24 @@ export function UploadKnowledge() {
           <p className="text-sm text-muted">
             Processed {data.details.count} file(s): {data.details.processed_files.join(', ')}
           </p>
-        </div>
+        </div>,
+        {
+          style: {
+            background: 'var(--primary)',
+            color: 'black',
+          },
+        }
       )
 
-      // Clear all files after successful upload
       setFiles([])
     } catch (error) {
       console.error('Upload error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to upload files')
+      toast.error(error instanceof Error ? error.message : 'Failed to upload files', {
+        style: {
+          background: 'var(--primary)',
+          color: 'black',
+        },
+      })
     } finally {
       setIsUploading(false)
     }
@@ -93,6 +114,7 @@ export function UploadKnowledge() {
 
   return (
     <div className="space-y-4">
+      <Toaster />
       <Card
         {...getRootProps()}
         className={`p-8 border-2 border-dashed cursor-pointer transition-colors
@@ -160,4 +182,4 @@ export function UploadKnowledge() {
       )}
     </div>
   )
-} 
+}
