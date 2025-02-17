@@ -81,20 +81,20 @@ export function UploadKnowledge() {
       <Card
         {...getRootProps()}
         className={`p-8 border-2 border-dashed cursor-pointer transition-colors
-          ${isDragActive ? 'border-primary bg-primary/5' : 'border-border'}`}
+          ${isDragActive ? 'border-primary bg-primary/5' : 'border-primary'}`}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center justify-center space-y-4">
-          <Upload className="w-12 h-12 text-muted-foreground" />
+          <Upload className="w-12 h-12 text-primary" />
           <div className="text-center">
-            <p className="text-lg font-medium">
+            <p className="text-lg font-medium text-primary">
               {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-primary">
               or click to select files
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-primary">
             Supported formats: PDF, MD
           </p>
         </div>
@@ -110,7 +110,7 @@ export function UploadKnowledge() {
               >
                 <div className="flex items-center space-x-2">
                   <FileText className="w-4 h-4" />
-                  <span className="text-sm">{file.name}</span>
+                  <span className="text-sm text-primary">{file.name}</span>
                 </div>
                 <Button
                   variant="ghost"
