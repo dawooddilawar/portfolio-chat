@@ -93,3 +93,4 @@ uvicorn==0.34.0
 webencodings==0.5.1
 wrapt==1.17.0
 yarl==1.18.3
+python-multipart==0.0.20
