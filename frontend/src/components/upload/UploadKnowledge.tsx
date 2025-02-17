@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Upload, X, FileText, Check } from 'lucide-react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface FileWithPreview extends File {
   preview?: string
 }
@@ -57,7 +59,7 @@ export function UploadKnowledge() {
     })
 
     try {
-      const response = await fetch('/api/v1/knowledge/upload', {
+      const response = await fetch(`${API_URL}/api/v1/knowledge/upload`, {
         method: 'POST',
         body: formData,
       })
