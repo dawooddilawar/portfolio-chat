@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Upload, X, FileText, Check } from 'lucide-react'
-import '@/styles/chat.css';
 
 interface FileWithPreview extends File {
   preview?: string
@@ -82,20 +81,20 @@ export function UploadKnowledge() {
       <Card
         {...getRootProps()}
         className={`p-8 border-2 border-dashed cursor-pointer transition-colors
-          ${isDragActive ? 'border-primary bg-primary/5' : 'border-primary'}`}
+          ${isDragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--primary)]'}`}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center justify-center space-y-4">
-          <Upload className="w-12 h-12 text-primary" />
+          <Upload className="w-12 h-12 text-[var(--primary)]" />
           <div className="text-center">
-            <p className="text-lg font-medium text-primary">
+            <p className="text-lg font-medium text-[var(--primary)]">
               {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
             </p>
-            <p className="text-sm text-primary">
+            <p className="text-sm text-[var(--primary)]">
               or click to select files
             </p>
           </div>
-          <p className="text-xs text-primary">
+          <p className="text-xs text-[var(--primary)]">
             Supported formats: PDF, MD
           </p>
         </div>
@@ -107,16 +106,17 @@ export function UploadKnowledge() {
             {files.map(file => (
               <div
                 key={file.name}
-                className="flex items-center justify-between p-2 bg-muted rounded"
+                className="flex items-center justify-between p-2 bg-[var(--primary)]/5 rounded"
               >
                 <div className="flex items-center space-x-2">
-                  <FileText className="w-4 h-4" />
-                  <span className="text-sm text-primary">{file.name}</span>
+                  <FileText className="w-4 h-4 text-[var(--primary)]" />
+                  <span className="text-sm text-[var(--primary)]">{file.name}</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => removeFile(file.name)}
+                  className="text-[var(--primary)] hover:text-[var(--primary-hover)]"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -125,7 +125,7 @@ export function UploadKnowledge() {
           </div>
 
           <Button
-            className="w-full"
+            className="w-full border-2 border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
             onClick={handleUpload}
             disabled={isUploading}
           >
