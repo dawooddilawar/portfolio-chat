@@ -14,6 +14,8 @@ COPY google95b836b3564f0edc.html ./public/
 
 # Build the app
 ENV NEXT_PUBLIC_API_URL=https://api.dawooddilawar.com
+ENV ADMIN_USERNAME=${ADMIN_USERNAME}
+ENV ADMIN_PASSWORD=${ADMIN_PASSWORD}
 RUN npm run build
 
 # Production stage
@@ -24,6 +26,9 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
+
+ENV ADMIN_USERNAME=${ADMIN_USERNAME}
+ENV ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 EXPOSE 3000
 CMD ["npm", "start"]

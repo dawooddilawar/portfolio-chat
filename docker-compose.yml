@@ -9,6 +9,8 @@ services:
     environment:
       - VIRTUAL_HOST=dawooddilawar.com,www.dawooddilawar.com
       - LETSENCRYPT_HOST=dawooddilawar.com,www.dawooddilawar.com
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     networks:
       - proxy-network
     depends_on:
