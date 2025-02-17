@@ -63,14 +63,27 @@ export function UploadKnowledge() {
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Upload failed')
       }
 
-      toast.success('Files uploaded successfully')
+      const data = await response.json()
+      
+      // Show success message with file details
+      toast.success(
+        <div className="space-y-1">
+          <p>{data.message}</p>
+          <p className="text-sm text-muted">
+            Processed {data.details.count} file(s): {data.details.processed_files.join(', ')}
+          </p>
+        </div>
+      )
+
+      // Clear all files after successful upload
       setFiles([])
     } catch (error) {
-      toast.error('Failed to upload files')
       console.error('Upload error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to upload files')
     } finally {
       setIsUploading(false)
     }

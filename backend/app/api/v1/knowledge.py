@@ -24,18 +24,26 @@ async def upload_files(files: List[UploadFile] = File(...)):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Save files to temporary directory
             file_paths = []
+            file_names = []
             for file in files:
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, 'wb') as f:
                     content = await file.read()
                     f.write(content)
                 file_paths.append(file_path)
+                file_names.append(file.filename)
 
             # Process documents
             processor = DocumentProcessor()
             await processor.process_documents(file_paths, clear_existing=False)
 
-        return {"message": "Files processed successfully"}
+        return {
+            "message": "Files processed successfully",
+            "details": {
+                "processed_files": file_names,
+                "count": len(file_names)
+            }
+        }
 
     except Exception as e:
         raise HTTPException(
