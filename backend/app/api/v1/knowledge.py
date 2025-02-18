@@ -124,17 +124,20 @@ async def delete_document(filename: str):
         # First check if the document exists using similarity search
         docs = vector_store.similarity_search(
             filename,  # Use filename as query to find relevant documents
-            k=1  # Adjust this number based on your needs
+            k=1
         )
 
-        if not docs or docs[0].metadata.get('source') != filename:
+        # Compare basenames instead of full paths
+        if not docs or os.path.basename(docs[0].metadata.get('source', '')) != filename:
             raise HTTPException(
                 status_code=404,
                 detail=f"Document {filename} not found"
             )
         
+        # Get the full source path from the found document for deletion
+        full_source = docs[0].metadata.get('source')
         deleted = vector_store.delete(
-            filter={'source': filename}
+            filter={'source': full_source}
         )
             
         return {
