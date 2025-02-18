@@ -71,8 +71,12 @@ async def list_documents():
             embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
         )
         
-        # Get all documents
-        docs = vector_store.get_all_documents()
+        # Use similarity_search with a general query to get documents
+        # We'll use a dummy embedding to get all documents
+        docs = vector_store.similarity_search(
+            "",
+            k=1000  # Adjust this number based on your needs
+        )
         
         # Process documents to get unique sources with their latest document's metadata
         document_map = {}
@@ -117,24 +121,25 @@ async def delete_document(filename: str):
             embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
         )
         
-        # Get all documents to check if the file exists
-        docs = vector_store.get_all_documents()
-        matching_docs = [doc for doc in docs if os.path.basename(doc.metadata.get('source', '')) == filename]
-        
-        if not matching_docs:
+        # First check if the document exists using similarity search
+        docs = vector_store.similarity_search(
+            filename,  # Use filename as query to find relevant documents
+            k=1  # Adjust this number based on your needs
+        )
+
+        if not docs or docs[0].metadata.get('source') != filename:
             raise HTTPException(
                 status_code=404,
                 detail=f"Document {filename} not found"
             )
         
-        # Delete documents with matching source
-        deleted_count = vector_store.delete(
-            filter={"source": {"$regex": f".*{filename}$"}}
+        deleted = vector_store.delete(
+            filter={'source': filename}
         )
-        
+            
         return {
             "message": f"Document {filename} deleted successfully",
-            "deleted_chunks": deleted_count
+            "deleted_chunks": deleted
         }
     except Exception as e:
         if isinstance(e, HTTPException):
