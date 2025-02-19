@@ -141,7 +141,6 @@ async def delete_document(filename: str):
             text("""
                 DELETE FROM langchain_pg_embedding
                 WHERE cmetadata->>'source' = :source
-                RETURNING id
             """),
             {"source": source_path}
         )
