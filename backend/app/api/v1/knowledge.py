@@ -118,12 +118,12 @@ async def delete_document(filename: str):
     try:
         db = SessionLocal()
         
-        # First verify if document exists
+        # First verify if document exists using correct column name 'cmetadata'
         result = db.execute(
             text("""
-                SELECT DISTINCT metadata->>'source' as source
+                SELECT DISTINCT cmetadata->>'source' as source
                 FROM langchain_pg_embedding
-                WHERE metadata->>'source' LIKE :filename
+                WHERE cmetadata->>'source' LIKE :filename
             """),
             {"filename": f"%{filename}"}
         ).first()
@@ -136,11 +136,11 @@ async def delete_document(filename: str):
             
         source_path = result.source
         
-        # Delete the document chunks
+        # Delete the document chunks using correct column name
         deleted = db.execute(
             text("""
                 DELETE FROM langchain_pg_embedding
-                WHERE metadata->>'source' = :source
+                WHERE cmetadata->>'source' = :source
                 RETURNING id
             """),
             {"source": source_path}
