@@ -136,9 +136,16 @@ async def delete_document(filename: str):
         
         # Get the full source path from the found document for deletion
         full_source = docs[0].metadata.get('source')
-        deleted = vector_store.delete(
-            filter={'metadata': {'source': full_source}}
-        )
+        # Instead of using PGVector.delete (which may not commit the transaction),
+        # we execute a raw SQL deletion to remove all chunks whose metadata contains the matching "source".
+        import json
+        session = SessionLocal()
+        filter_value = json.dumps({"source": full_source})
+        query = text("DELETE FROM portfolio_chunks WHERE metadata @> :filter_value")
+        result = session.execute(query, {"filter_value": filter_value})
+        session.commit()
+        deleted = result.rowcount
+        session.close()
             
         return {
             "message": f"Document {filename} deleted successfully",
