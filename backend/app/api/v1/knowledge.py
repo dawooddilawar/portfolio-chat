@@ -9,7 +9,9 @@ from sqlalchemy import text
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_openai import OpenAIEmbeddings
 from app.core.config import get_settings
+import logging
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
 
@@ -114,47 +116,59 @@ async def delete_document(filename: str):
     Delete a specific document and its chunks from the vector store.
     """
     try:
-        # Initialize PGVector store
-        vector_store = PGVector(
-            collection_name="portfolio_chunks",
-            connection_string=settings.get_database_url(),
-            embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
-        )
+        db = SessionLocal()
         
-        # First check if the document exists using similarity search
-        docs = vector_store.similarity_search(
-            filename,  # Use filename as query to find relevant documents
-            k=1
-        )
-
-        # Compare basenames instead of full paths
-        if not docs or os.path.basename(docs[0].metadata.get('source', '')) != filename:
+        # First verify if document exists
+        result = db.execute(
+            text("""
+                SELECT DISTINCT metadata->>'source' as source
+                FROM langchain_pg_embedding
+                WHERE metadata->>'source' LIKE :filename
+            """),
+            {"filename": f"%{filename}"}
+        ).first()
+        
+        if not result:
             raise HTTPException(
                 status_code=404,
                 detail=f"Document {filename} not found"
             )
+            
+        source_path = result.source
         
-        # Get the full source path from the found document for deletion
-        full_source = docs[0].metadata.get('source')
-        # Instead of using PGVector.delete (which may not commit the transaction),
-        # we execute a raw SQL deletion to remove all chunks whose metadata contains the matching "source".
-        import json
-        session = SessionLocal()
-        filter_value = json.dumps({"source": full_source})
-        query = text("DELETE FROM portfolio_chunks WHERE metadata @> :filter_value")
-        result = session.execute(query, {"filter_value": filter_value})
-        session.commit()
-        deleted = result.rowcount
-        session.close()
+        # Delete the document chunks
+        deleted = db.execute(
+            text("""
+                DELETE FROM langchain_pg_embedding
+                WHERE metadata->>'source' = :source
+                RETURNING id
+            """),
+            {"source": source_path}
+        )
+        
+        # Count deleted rows
+        deleted_count = len(deleted.all())
+        
+        if deleted_count == 0:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No chunks found for document {filename}"
+            )
+            
+        db.commit()
             
         return {
             "message": f"Document {filename} deleted successfully",
-            "deleted_chunks": deleted
+            "deleted_chunks": deleted_count
         }
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
+        db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Error deleting document: {str(e)}"
         )
+    finally:
+        db.close()
