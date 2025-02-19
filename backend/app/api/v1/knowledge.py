@@ -137,7 +137,7 @@ async def delete_document(filename: str):
         # Get the full source path from the found document for deletion
         full_source = docs[0].metadata.get('source')
         deleted = vector_store.delete(
-            filter={'source': full_source}
+            filter={'metadata': {'source': full_source}}
         )
             
         return {
