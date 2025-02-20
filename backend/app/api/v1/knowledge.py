@@ -119,7 +119,7 @@ async def delete_document(filename: str):
     try:
         db = SessionLocal()
         
-        # First find all chunks for this document
+        # Find all chunks for this document, handling potential path prefixes
         result = db.execute(
             text("""
                 SELECT 
@@ -127,9 +127,9 @@ async def delete_document(filename: str):
                     e.collection_id,
                     e.cmetadata->>'source' as source
                 FROM langchain_pg_embedding e
-                WHERE e.cmetadata->>'source' = :filename
+                WHERE e.cmetadata->>'source' LIKE :filename_pattern
             """),
-            {"filename": filename}
+            {"filename_pattern": f"%{filename}"}  # Use pattern matching to find the filename anywhere in the source path
         ).fetchall()
         
         if not result:
@@ -162,7 +162,7 @@ async def delete_document(filename: str):
                 detail=f"No chunks found for document {filename}"
             )
             
-        # Check if this was the last document in the collection
+        # Check if this was the last document in any collections
         for collection_id in collection_ids:
             remaining = db.execute(
                 text("""
