@@ -129,7 +129,7 @@ async def delete_document(filename: str):
                 FROM langchain_pg_embedding e
                 WHERE e.cmetadata->>'source' LIKE :filename_pattern
             """),
-            {"filename_pattern": f"%{filename}"}  # Use pattern matching to find the filename anywhere in the source path
+            {"filename_pattern": f"%{filename}"}
         ).fetchall()
         
         if not result:
@@ -142,11 +142,11 @@ async def delete_document(filename: str):
         chunk_uuids = [str(row.uuid) for row in result]
         collection_ids = list(set(str(row.collection_id) for row in result))
         
-        # Delete the chunks
+        # Delete the chunks using proper UUID casting
         deleted = db.execute(
             text("""
                 DELETE FROM langchain_pg_embedding
-                WHERE uuid = ANY(:chunk_uuids)
+                WHERE uuid = ANY(SELECT CAST(UNNEST(:chunk_uuids) AS UUID))
                 RETURNING uuid
             """),
             {"chunk_uuids": chunk_uuids}
@@ -168,7 +168,7 @@ async def delete_document(filename: str):
                 text("""
                     SELECT COUNT(*) 
                     FROM langchain_pg_embedding 
-                    WHERE collection_id = :collection_id
+                    WHERE collection_id = CAST(:collection_id AS UUID)
                 """),
                 {"collection_id": collection_id}
             ).scalar()
@@ -178,7 +178,7 @@ async def delete_document(filename: str):
                 db.execute(
                     text("""
                         DELETE FROM langchain_pg_collection 
-                        WHERE uuid = :collection_id
+                        WHERE uuid = CAST(:collection_id AS UUID)
                     """),
                     {"collection_id": collection_id}
                 )
