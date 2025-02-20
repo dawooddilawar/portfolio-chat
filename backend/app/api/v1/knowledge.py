@@ -110,6 +110,7 @@ async def list_documents():
             detail=f"Error fetching documents: {str(e)}"
         )
 
+
 @router.delete("/documents/{filename}")
 async def delete_document(filename: str):
     """
@@ -118,15 +119,18 @@ async def delete_document(filename: str):
     try:
         db = SessionLocal()
         
-        # First verify if document exists using correct column name 'cmetadata'
+        # First find all chunks for this document
         result = db.execute(
             text("""
-                SELECT DISTINCT cmetadata->>'source' as source
-                FROM langchain_pg_embedding
-                WHERE cmetadata->>'source' LIKE :filename
+                SELECT 
+                    e.uuid,
+                    e.collection_id,
+                    e.cmetadata->>'source' as source
+                FROM langchain_pg_embedding e
+                WHERE e.cmetadata->>'source' = :filename
             """),
-            {"filename": f"%{filename}"}
-        ).first()
+            {"filename": filename}
+        ).fetchall()
         
         if not result:
             raise HTTPException(
@@ -134,26 +138,51 @@ async def delete_document(filename: str):
                 detail=f"Document {filename} not found"
             )
             
-        source_path = result.source
+        # Get unique collection IDs and chunk UUIDs
+        chunk_uuids = [str(row.uuid) for row in result]
+        collection_ids = list(set(str(row.collection_id) for row in result))
         
-        # Delete the document chunks using correct column name
+        # Delete the chunks
         deleted = db.execute(
             text("""
                 DELETE FROM langchain_pg_embedding
-                WHERE cmetadata->>'source' = :source
+                WHERE uuid = ANY(:chunk_uuids)
+                RETURNING uuid
             """),
-            {"source": source_path}
+            {"chunk_uuids": chunk_uuids}
         )
         
         # Count deleted rows
         deleted_count = len(deleted.all())
         
         if deleted_count == 0:
+            db.rollback()
             raise HTTPException(
                 status_code=404,
                 detail=f"No chunks found for document {filename}"
             )
             
+        # Check if this was the last document in the collection
+        for collection_id in collection_ids:
+            remaining = db.execute(
+                text("""
+                    SELECT COUNT(*) 
+                    FROM langchain_pg_embedding 
+                    WHERE collection_id = :collection_id
+                """),
+                {"collection_id": collection_id}
+            ).scalar()
+            
+            if remaining == 0:
+                # Delete the empty collection
+                db.execute(
+                    text("""
+                        DELETE FROM langchain_pg_collection 
+                        WHERE uuid = :collection_id
+                    """),
+                    {"collection_id": collection_id}
+                )
+        
         db.commit()
             
         return {
