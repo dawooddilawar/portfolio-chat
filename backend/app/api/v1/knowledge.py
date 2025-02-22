@@ -1,11 +1,16 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+# backend/app/api/v1/knowledge.py
+
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import List
 import tempfile
 import os
 from datetime import datetime
+from sqlalchemy.orm import Session
+
 from app.services.document_processor import DocumentProcessor
+from app.services.document_service import DocumentService
 from app.db.session import SessionLocal
-from sqlalchemy import text
+from app.db.deps import get_db
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_openai import OpenAIEmbeddings
 from app.core.config import get_settings
@@ -55,6 +60,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
         }
 
     except Exception as e:
+        logger.error(f"Error processing files: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error processing files: {str(e)}"
@@ -105,98 +111,25 @@ async def list_documents():
         
         return documents
     except Exception as e:
+        logger.error(f"Error fetching documents: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching documents: {str(e)}"
         )
 
-
 @router.delete("/documents/{filename}")
-async def delete_document(filename: str):
+async def delete_document(filename: str, db: Session = Depends(get_db)):
     """
     Delete a specific document and its chunks from the vector store.
     """
     try:
-        db = SessionLocal()
-        
-        # Find all chunks for this document, handling potential path prefixes
-        result = db.execute(
-            text("""
-                SELECT 
-                    e.uuid,
-                    e.collection_id,
-                    e.cmetadata->>'source' as source
-                FROM langchain_pg_embedding e
-                WHERE e.cmetadata->>'source' LIKE :filename_pattern
-            """),
-            {"filename_pattern": f"%{filename}"}
-        ).fetchall()
-        
-        if not result:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Document {filename} not found"
-            )
-            
-        # Get unique collection IDs and chunk UUIDs
-        chunk_uuids = [str(row.uuid) for row in result]
-        collection_ids = list(set(str(row.collection_id) for row in result))
-        
-        # Delete the chunks using proper UUID casting
-        deleted = db.execute(
-            text("""
-                DELETE FROM langchain_pg_embedding
-                WHERE uuid = ANY(SELECT CAST(UNNEST(:chunk_uuids) AS UUID))
-                RETURNING uuid
-            """),
-            {"chunk_uuids": chunk_uuids}
-        )
-        
-        # Count deleted rows
-        deleted_count = len(deleted.all())
-        
-        if deleted_count == 0:
-            db.rollback()
-            raise HTTPException(
-                status_code=404,
-                detail=f"No chunks found for document {filename}"
-            )
-            
-        # Check if this was the last document in any collections
-        for collection_id in collection_ids:
-            remaining = db.execute(
-                text("""
-                    SELECT COUNT(*) 
-                    FROM langchain_pg_embedding 
-                    WHERE collection_id = CAST(:collection_id AS UUID)
-                """),
-                {"collection_id": collection_id}
-            ).scalar()
-            
-            if remaining == 0:
-                # Delete the empty collection
-                db.execute(
-                    text("""
-                        DELETE FROM langchain_pg_collection 
-                        WHERE uuid = CAST(:collection_id AS UUID)
-                    """),
-                    {"collection_id": collection_id}
-                )
-        
-        db.commit()
-            
-        return {
-            "message": f"Document {filename} deleted successfully",
-            "deleted_chunks": deleted_count
-        }
-        
+        result = await DocumentService.delete_document(db, filename)
+        return result
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        logger.error(f"Error in delete endpoint: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error deleting document: {str(e)}"
         )
-    finally:
-        db.close()

@@ -15,6 +15,8 @@ from langchain_openai import OpenAIEmbeddings
 from unstructured.partition.api import partition_via_api
 from unstructured.partition.auto import partition
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.services.document_service import DocumentService
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -182,7 +184,7 @@ class DocumentProcessor:
             logger.error(f"Error storing documents in vector store: {str(e)}", exc_info=True)
             raise
 
-    async def _clear_document_vectors(self, filenames: List[str]) -> dict:
+    async def clear_document_vectors(self, filenames: List[str]) -> dict:
         """
         Clear vectors for specific documents if they exist.
         
@@ -193,31 +195,14 @@ class DocumentProcessor:
             dict: Summary of cleared and not found documents
         """
         try:
-            vector_store = PGVector.from_existing_index(
-                embedding=self.embeddings,
-                collection_name=self.collection_name,
-                connection_string=self.connection_string,
-            )
-
-            results = {
-                "cleared": [],
-                "not_found": []
-            }
-
-            # Get existing documents
-            existing_docs = vector_store.get_all_documents()
-            existing_sources = {doc.metadata.get('source') for doc in existing_docs}
-
-            for filename in filenames:
-                if filename in existing_sources:
-                    vector_store.delete(filter={"source": filename})
-                    results["cleared"].append(filename)
-                    logger.info(f"Cleared vectors for document: {filename}")
-                else:
-                    results["not_found"].append(filename)
-                    logger.info(f"Document not found: {filename}")
-
-            return results
+            db = SessionLocal()
+            try:
+                # Use the centralized document service for deletion
+                results = await DocumentService.delete_documents_by_filenames(db, filenames)
+                logger.info(f"Document clearing results: {results}")
+                return results
+            finally:
+                db.close()
 
         except Exception as e:
             logger.error(f"Error clearing document vectors: {str(e)}", exc_info=True)
