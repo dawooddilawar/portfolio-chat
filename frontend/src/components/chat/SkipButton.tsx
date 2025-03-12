@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAnimationStore } from '@/store/animationStore';
 
 interface SkipButtonProps {
@@ -9,13 +9,28 @@ interface SkipButtonProps {
 export const SkipButton: React.FC<SkipButtonProps> = ({ className = '', onSkip }) => {
     const { skipAnimation } = useAnimationStore();
 
+    // Add component lifecycle logging
+    useEffect(() => {
+        console.log('SkipButton mounted, skipAnimation:', skipAnimation);
+        return () => {
+            console.log('SkipButton unmounted');
+        };
+    }, [skipAnimation]);
+
     // Don't render if already skipped
     if (skipAnimation) {
+        console.log('SkipButton not rendering due to skipAnimation being true');
         return null;
     }
 
-    const handleSkip = () => {
-        onSkip();
+    const handleSkip = (e: React.MouseEvent) => {
+        e.preventDefault();
+        console.log('Skip button clicked, calling onSkip');
+        
+        // Use setTimeout to ensure the event completes before any potential unmounting
+        setTimeout(() => {
+            onSkip();
+        }, 0);
     };
 
     return (

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
+import { SkipButton } from './SkipButton';
 import { useChatStore } from '@/store/chatStore';
 import '@/styles/animations/chatAnimations.css';
 import {Message} from "@/config/messages";
@@ -10,11 +11,15 @@ import {Message} from "@/config/messages";
 interface ChatMessagesProps {
     initialMessages?: Message[];
     isTyping?: boolean;
+    onSkip?: () => void;
+    showSkipButton?: boolean;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
     initialMessages = [],
-    isTyping = false
+    isTyping = false,
+    onSkip,
+    showSkipButton = false
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { messages } = useChatStore();
@@ -22,7 +27,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     // Always include initial messages, then add store messages
     const displayMessages = [...initialMessages, ...messages];
 
-    console.log('Current messages in ChatMessages:', messages); // Debug log
+    console.log('ChatMessages render - isTyping:', isTyping, 'showSkipButton:', showSkipButton); // Debug log
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,6 +68,14 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         return className;
     };
 
+    // Handle skip button click with logging
+    const handleSkip = () => {
+        console.log('Skip button clicked in ChatMessages');
+        if (onSkip) {
+            onSkip();
+        }
+    };
+
     return (
         <>
             {displayMessages.map((message) => (
@@ -85,6 +98,13 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 <div className="message-wrapper mb-[30px]">
                     <Avatar className="mt-2 ml-2" type="assistant"/>
                     <TypingIndicator />
+                    
+                    {/* Skip button below typing indicator */}
+                    {showSkipButton && (
+                        <div className="ml-4 mt-2">
+                            <SkipButton onSkip={handleSkip} />
+                        </div>
+                    )}
                 </div>
             )}
             <div ref={messagesEndRef} />

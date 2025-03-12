@@ -2,10 +2,9 @@
 
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatMessages } from '@/components/chat/ChatMessages';
-import { SkipButton } from '@/components/chat/SkipButton';
 import { useAnimationSequence } from '@/hooks/useAnimationSequence';
 import { useInView } from '@/hooks/useInView';
 import {
@@ -25,6 +24,14 @@ export const Chat: React.FC = () => {
     const { isLoading } = useChatStore();
     const { setSkipAnimation } = useAnimationStore();
 
+    // Add component lifecycle logging
+    useEffect(() => {
+        console.log('Chat component mounted');
+        return () => {
+            console.log('Chat component unmounted');
+        };
+    }, []);
+
     const {
         visibleMessages,
         isTyping,
@@ -40,12 +47,20 @@ export const Chat: React.FC = () => {
     ]);
 
     // Handle user message submission to skip animations
-    const handleMessageSubmit = () => {
+    const handleMessageSubmit = useCallback(() => {
+        console.log('Message submitted, skipping animations');
         skipAllAnimations();
-    };
+    }, [skipAllAnimations]);
+
+    // Handle skip button click
+    const handleSkip = useCallback(() => {
+        console.log('Skip requested from Chat component');
+        skipAllAnimations();
+    }, [skipAllAnimations]);
 
     useEffect(() => {
         if (inView && !animationStarted.current) {
+            console.log('Animation starting due to inView');
             animationStarted.current = true;
             startAnimation();
         }
@@ -54,6 +69,14 @@ export const Chat: React.FC = () => {
     // Determine if skip button should be shown
     // Show when animation has started but not finished
     const showSkipButton = hasStartedAnimation && !hasFinishedAnimation;
+    
+    console.log('Chat render state:', { 
+        hasStartedAnimation, 
+        hasFinishedAnimation, 
+        showSkipButton, 
+        isTyping,
+        messageCount: visibleMessages.length
+    });
 
     return (
         <div ref={chatRef} className="chat-container">
@@ -61,14 +84,9 @@ export const Chat: React.FC = () => {
                 <ChatMessages
                     initialMessages={visibleMessages}
                     isTyping={isTyping || isLoading}
+                    onSkip={handleSkip}
+                    showSkipButton={showSkipButton}
                 />
-                
-                {/* Skip button - shown from first message until animation completes */}
-                {showSkipButton && (
-                    <div className="absolute top-4 right-4">
-                        <SkipButton onSkip={skipAllAnimations} />
-                    </div>
-                )}
             </div>
             <div className="chat-input-container">
                 <ChatInput onInputStarted={handleMessageSubmit} />
