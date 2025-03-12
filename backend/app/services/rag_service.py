@@ -4,7 +4,8 @@ import logging
 from typing import List, Dict, Any, Tuple
 from langchain_core.documents import Document
 from langchain_community.vectorstores.pgvector import PGVector
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
@@ -24,13 +25,13 @@ class RAGService:
     def __init__(
             self,
             collection_name: str = "portfolio_chunks",
-            model_name: str = "gpt-4o",
+            model_name: str = "gemini-2.0-flash",
             temperature: float = 0.7,
             max_tokens: int = 1000
     ):
         self.connection_string = settings.get_database_url()
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        self.llm = ChatOpenAI(
+        self.llm = ChatGoogleGenerativeAI(
             model=model_name,
             temperature=temperature,
             max_tokens=max_tokens
@@ -60,17 +61,9 @@ class RAGService:
             base_compressor=compressor_pipeline,
             base_retriever=base_retriever
         )
-
-        # Add a verification LLM (cheaper model)
-        self.verification_llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            max_tokens=500
-        )
         
         self.personality = self.get_current_personality()
         self._initialize_rag_chain()
-        self._initialize_verification_chain()
 
     def get_current_personality(self) -> str:
         """Determine the current personality based on time and day."""
@@ -146,86 +139,18 @@ class RAGService:
             | StrOutputParser()
         )
 
-    def _initialize_verification_chain(self) -> None:
-        """Initialize the verification chain."""
-        VERIFICATION_TEMPLATE = """You are a fact-checking assistant. Your job is to verify if the given response 
-        strictly adheres to the provided context and doesn't include any hallucinations or additional information.
-
-        Question Asked: {question}
-
-        Context: {context}
-        
-        Generated Response: {response}
-        
-        Verify the following:
-        1. Does the response contain ONLY information present in the context, be very strict, vague information is not allowed?
-        2. Are there any statements that go beyond the provided context?
-        3. Is the response accurate according to the context?
-        4. We need to be very strict, vague information is not allowed.
-        5. If the response is asking about some information like "projects" or "experience", make sure to only include information from the context that is relevant to the question, and include the actual project name, etc and not vague information.
-
-        Return a JSON-like string in the format:
-        {{
-            "verified": true/false,
-            "issues": ["issue1", "issue2"] or [],
-            "corrected_response": "corrected version" or null
-        }}
-        
-        If the response is accurate, return verified=true and empty issues list.
-        If there are issues, provide a corrected version that strictly adheres to the context.
-        """
-
-        self.verification_prompt = ChatPromptTemplate.from_template(VERIFICATION_TEMPLATE)
-        
-        # Create verification chain
-        self.verification_chain = (
-            self.verification_prompt 
-            | self.verification_llm 
-            | StrOutputParser()
-        )
-
-    async def verify_response(self, context: str, response: str, question: str) -> dict:
-        """Verify the generated response against the context."""
-        try:
-            verification_result = await self.verification_chain.ainvoke({
-                "context": context,
-                "response": response,
-                "question": question
-            })
-            
-            
-            return json.loads(verification_result)
-        except Exception as e:
-            logger.error(f"Error in response verification: {str(e)}", exc_info=True)
-            # Return a safe default
-            return {"verified": True, "issues": [], "corrected_response": None}
-
     async def query(self, question: str) -> str:
-        """Process a question through the RAG pipeline with verification."""
+        """Process a question through the RAG pipeline."""
         try:
             logger.info(f"Processing question: {question}")
             
-            # Use invoke instead of get_relevant_documents
-            context = self.retriever.invoke(question)
-            formatted_context = format_docs(context)
-            
-            # Generate initial response
+            # Generate response using the RAG chain
             response = await self.rag_chain.ainvoke(question)
             
-            # Verify the response
-            verification_result = await self.verify_response(formatted_context, response, question)
+            logger.info(f"Generated response for question: {question}")
             
-            # If verification failed and we have a corrected version, use that instead
-            final_response = (verification_result.get("corrected_response") 
-                            if not verification_result["verified"] and verification_result.get("corrected_response")
-                            else response)
-            
-            # Log the verification result for monitoring but don't return it
-            logger.info(f"Generated and verified response for question: {question}")
-            logger.debug(f"Verification result: {verification_result}")
-            
-            # Return only the string response
-            return final_response
+            # Return the response
+            return response
             
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
