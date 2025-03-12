@@ -9,10 +9,20 @@ export const useAnimationSequence = (phases: Message[][]) => {
     const [isTyping, setIsTyping] = useState(false);
     const currentPhaseRef = useRef(0);
     const isAnimatingRef = useRef(false);
-    const { skipAnimation } = useAnimationStore();
+    const timeoutsRef = useRef<number[]>([]);
+    const { skipAnimation, setSkipAnimation } = useAnimationStore();
+
+    // Function to clear all pending timeouts
+    const clearAllTimeouts = useCallback(() => {
+        timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+        timeoutsRef.current = [];
+    }, []);
 
     // Function to skip all animations and show all messages
     const skipAllAnimations = useCallback(() => {
+        // Clear all pending timeouts
+        clearAllTimeouts();
+        
         // Flatten all phases into a single array of messages
         const allMessages = phases.flat();
         setVisibleMessages(allMessages);
@@ -21,7 +31,10 @@ export const useAnimationSequence = (phases: Message[][]) => {
         // Set current phase to the end to prevent further animations
         currentPhaseRef.current = phases.length;
         isAnimatingRef.current = false;
-    }, [phases]);
+        
+        // Update the global state
+        setSkipAnimation(true);
+    }, [phases, clearAllTimeouts, setSkipAnimation]);
 
     // Check if animation should be skipped (from store)
     useEffect(() => {
@@ -29,6 +42,20 @@ export const useAnimationSequence = (phases: Message[][]) => {
             skipAllAnimations();
         }
     }, [skipAnimation, skipAllAnimations]);
+
+    // Create a timeout that can be tracked and cleared
+    const createTrackedTimeout = useCallback((callback: () => void, delay: number) => {
+        const timeoutId = window.setTimeout(() => {
+            // Remove this timeout from the tracking array when it completes
+            timeoutsRef.current = timeoutsRef.current.filter(id => id !== timeoutId);
+            callback();
+        }, delay);
+        
+        // Add this timeout to the tracking array
+        timeoutsRef.current.push(timeoutId);
+        
+        return timeoutId;
+    }, []);
 
     const playNextPhase = useCallback(async () => {
         if (isAnimatingRef.current || currentPhaseRef.current >= phases.length) {
@@ -38,7 +65,7 @@ export const useAnimationSequence = (phases: Message[][]) => {
         isAnimatingRef.current = true;
         const currentPhase = phases[currentPhaseRef.current];
 
-        // Check if we should skip animations
+        // If skip is already active, show all messages immediately
         if (skipAnimation) {
             skipAllAnimations();
             return;
@@ -48,69 +75,55 @@ export const useAnimationSequence = (phases: Message[][]) => {
             // First phase: show messages with 0.5s delay
             setVisibleMessages(prev => [...prev, currentPhase[0]]);
             
-            // Check for skip after each step
-            if (skipAnimation) { 
-                skipAllAnimations();
-                return;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            if (skipAnimation) {
-                skipAllAnimations();
-                return;
-            }
-            
-            setVisibleMessages(prev => [...prev, currentPhase[1]]);
-            
-            if (skipAnimation) {
-                skipAllAnimations();
-                return;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            createTrackedTimeout(() => {
+                setVisibleMessages(prev => [...prev, currentPhase[1]]);
+                
+                createTrackedTimeout(() => {
+                    // Move to next phase after delay
+                    currentPhaseRef.current++;
+                    isAnimatingRef.current = false;
+                    
+                    if (currentPhaseRef.current < phases.length) {
+                        playNextPhase();
+                    }
+                }, 5000);
+            }, 500);
         } else {
             // Other phases
             setIsTyping(true);
             
-            if (skipAnimation) {
-                skipAllAnimations();
-                return;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            if (skipAnimation) {
-                skipAllAnimations();
-                return;
-            }
-            
-            setIsTyping(false);
-
-            for (const message of currentPhase) {
-                setVisibleMessages(prev => [...prev, message]);
+            createTrackedTimeout(() => {
+                setIsTyping(false);
                 
-                if (skipAnimation) {
-                    skipAllAnimations();
-                    return;
-                }
+                // Add each message with a delay
+                let messageIndex = 0;
                 
-                await new Promise(resolve => setTimeout(resolve, 500));
+                const addNextMessage = () => {
+                    if (messageIndex < currentPhase.length) {
+                        setVisibleMessages(prev => [...prev, currentPhase[messageIndex]]);
+                        messageIndex++;
+                        
+                        if (messageIndex < currentPhase.length) {
+                            createTrackedTimeout(addNextMessage, 500);
+                        } else {
+                            // All messages in this phase added, move to next phase
+                            createTrackedTimeout(() => {
+                                currentPhaseRef.current++;
+                                isAnimatingRef.current = false;
+                                
+                                if (currentPhaseRef.current < phases.length) {
+                                    playNextPhase();
+                                }
+                            }, 500);
+                        }
+                    }
+                };
                 
-                if (skipAnimation) {
-                    skipAllAnimations();
-                    return;
-                }
-            }
+                // Start adding messages
+                addNextMessage();
+            }, 5000);
         }
-
-        currentPhaseRef.current++;
-        isAnimatingRef.current = false;
-
-        if (currentPhaseRef.current < phases.length) {
-            playNextPhase();
-        }
-    }, [phases, skipAnimation, skipAllAnimations]);
+    }, [phases, skipAnimation, skipAllAnimations, createTrackedTimeout]);
 
     const startAnimation = useCallback(() => {
         if (currentPhaseRef.current === 0 && !isAnimatingRef.current) {
@@ -123,10 +136,19 @@ export const useAnimationSequence = (phases: Message[][]) => {
         }
     }, [playNextPhase, skipAnimation, skipAllAnimations]);
 
+    // Clean up timeouts on unmount
+    useEffect(() => {
+        return () => {
+            clearAllTimeouts();
+        };
+    }, [clearAllTimeouts]);
+
     return {
         visibleMessages,
         isTyping,
         startAnimation,
-        skipAllAnimations
+        skipAllAnimations,
+        hasStartedAnimation: visibleMessages.length > 0,
+        hasFinishedAnimation: currentPhaseRef.current >= phases.length
     };
 };

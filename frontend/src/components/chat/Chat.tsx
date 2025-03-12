@@ -19,7 +19,7 @@ import { useAnimationStore } from '@/store/animationStore';
 import '@/styles/chat.css';
 
 export const Chat: React.FC = () => {
-    const chatRef = useRef<Element>(null);
+    const chatRef = useRef<HTMLDivElement>(null);
     const inView = useInView(chatRef);
     const animationStarted = useRef(false);
     const { isLoading } = useChatStore();
@@ -28,7 +28,10 @@ export const Chat: React.FC = () => {
     const {
         visibleMessages,
         isTyping,
-        startAnimation
+        startAnimation,
+        skipAllAnimations,
+        hasStartedAnimation,
+        hasFinishedAnimation
     } = useAnimationSequence([
         introductionPhase,
         projectPhase,
@@ -36,9 +39,9 @@ export const Chat: React.FC = () => {
         contactPhase,
     ]);
 
-    // Handle user input to skip animations
-    const handleUserInputStarted = () => {
-        setSkipAnimation(true);
+    // Handle user message submission to skip animations
+    const handleMessageSubmit = () => {
+        skipAllAnimations();
     };
 
     useEffect(() => {
@@ -48,6 +51,10 @@ export const Chat: React.FC = () => {
         }
     }, [inView, startAnimation]);
 
+    // Determine if skip button should be shown
+    // Show when animation has started but not finished
+    const showSkipButton = hasStartedAnimation && !hasFinishedAnimation;
+
     return (
         <div ref={chatRef} className="chat-container">
             <div className="messages-container relative">
@@ -56,15 +63,15 @@ export const Chat: React.FC = () => {
                     isTyping={isTyping || isLoading}
                 />
                 
-                {/* Skip button - only shown during animation */}
-                {isTyping && (
+                {/* Skip button - shown from first message until animation completes */}
+                {showSkipButton && (
                     <div className="absolute top-4 right-4">
-                        <SkipButton />
+                        <SkipButton onSkip={skipAllAnimations} />
                     </div>
                 )}
             </div>
             <div className="chat-input-container">
-                <ChatInput onInputStarted={handleUserInputStarted} />
+                <ChatInput onInputStarted={handleMessageSubmit} />
             </div>
         </div>
     );

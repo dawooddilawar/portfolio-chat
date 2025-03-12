@@ -3,10 +3,11 @@ import { useAnimationStore } from '@/store/animationStore';
 
 interface SkipButtonProps {
     className?: string;
+    onSkip: () => void;
 }
 
-export const SkipButton: React.FC<SkipButtonProps> = ({ className = '' }) => {
-    const { skipAnimation, setSkipAnimation } = useAnimationStore();
+export const SkipButton: React.FC<SkipButtonProps> = ({ className = '', onSkip }) => {
+    const { skipAnimation } = useAnimationStore();
 
     // Don't render if already skipped
     if (skipAnimation) {
@@ -14,7 +15,7 @@ export const SkipButton: React.FC<SkipButtonProps> = ({ className = '' }) => {
     }
 
     const handleSkip = () => {
-        setSkipAnimation(true);
+        onSkip();
     };
 
     return (
@@ -23,14 +24,15 @@ export const SkipButton: React.FC<SkipButtonProps> = ({ className = '' }) => {
             className={`
                 pixel-corners
                 text-xs
-                text-primary
-                border-primary
+                text-[color:var(--primary)]
+                border-[color:var(--primary)]
                 hover:opacity-80
                 transition-opacity
                 px-3
                 py-1.5
                 ${className}
             `}
+            aria-label="Skip animation"
         >
             Skip →
         </button>
