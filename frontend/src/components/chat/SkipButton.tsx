@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAnimationStore } from '@/store/animationStore';
 
 interface SkipButtonProps {
@@ -8,12 +8,16 @@ interface SkipButtonProps {
 
 export const SkipButton: React.FC<SkipButtonProps> = ({ className = '', onSkip }) => {
     const { skipAnimation } = useAnimationStore();
+    const isMountedRef = useRef(true);
 
-    // Add component lifecycle logging
+    // Add component lifecycle logging and tracking
     useEffect(() => {
         console.log('SkipButton mounted, skipAnimation:', skipAnimation);
+        isMountedRef.current = true;
+        
         return () => {
             console.log('SkipButton unmounted');
+            isMountedRef.current = false;
         };
     }, [skipAnimation]);
 
@@ -27,10 +31,12 @@ export const SkipButton: React.FC<SkipButtonProps> = ({ className = '', onSkip }
         e.preventDefault();
         console.log('Skip button clicked, calling onSkip');
         
-        // Use setTimeout to ensure the event completes before any potential unmounting
-        setTimeout(() => {
+        // Only call onSkip if component is still mounted
+        if (isMountedRef.current) {
             onSkip();
-        }, 0);
+        } else {
+            console.warn('Skip button clicked but component is unmounted');
+        }
     };
 
     return (

@@ -21,16 +21,23 @@ export const Chat: React.FC = () => {
     const chatRef = useRef<HTMLDivElement>(null);
     const inView = useInView(chatRef);
     const animationStarted = useRef(false);
+    const isMountedRef = useRef(true);
     const { isLoading } = useChatStore();
     const { setSkipAnimation } = useAnimationStore();
 
-    // Add component lifecycle logging
+    // Add component lifecycle logging and tracking
     useEffect(() => {
         console.log('Chat component mounted');
+        isMountedRef.current = true;
+        
         return () => {
             console.log('Chat component unmounted');
+            isMountedRef.current = false;
+            
+            // Reset animation state on unmount to prevent state updates
+            setSkipAnimation(true);
         };
-    }, []);
+    }, [setSkipAnimation]);
 
     const {
         visibleMessages,
@@ -48,27 +55,51 @@ export const Chat: React.FC = () => {
 
     // Handle user message submission to skip animations
     const handleMessageSubmit = useCallback(() => {
+        if (!isMountedRef.current) {
+            console.warn('handleMessageSubmit called after unmount');
+            return;
+        }
+        
         console.log('Message submitted, skipping animations');
-        skipAllAnimations();
+        try {
+            skipAllAnimations();
+        } catch (error) {
+            console.error('Error in handleMessageSubmit:', error);
+        }
     }, [skipAllAnimations]);
 
     // Handle skip button click
     const handleSkip = useCallback(() => {
+        if (!isMountedRef.current) {
+            console.warn('handleSkip called after unmount');
+            return;
+        }
+        
         console.log('Skip requested from Chat component');
-        skipAllAnimations();
+        try {
+            skipAllAnimations();
+        } catch (error) {
+            console.error('Error in handleSkip:', error);
+        }
     }, [skipAllAnimations]);
 
+    // Start animation when component comes into view
     useEffect(() => {
-        if (inView && !animationStarted.current) {
+        if (inView && !animationStarted.current && isMountedRef.current) {
             console.log('Animation starting due to inView');
             animationStarted.current = true;
-            startAnimation();
+            try {
+                startAnimation();
+            } catch (error) {
+                console.error('Error starting animation:', error);
+            }
         }
     }, [inView, startAnimation]);
 
-    // Determine if skip button should be shown
-    // Show when animation has started but not finished
-    const showSkipButton = hasStartedAnimation && !hasFinishedAnimation;
+    // Memoize the skip button visibility calculation
+    const showSkipButton = useCallback(() => {
+        return hasStartedAnimation && !hasFinishedAnimation;
+    }, [hasStartedAnimation, hasFinishedAnimation])();
     
     console.log('Chat render state:', { 
         hasStartedAnimation, 

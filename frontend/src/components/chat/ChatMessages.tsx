@@ -1,6 +1,6 @@
 // src/components/chat/ChatMessages.tsx
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
 import { SkipButton } from './SkipButton';
@@ -22,6 +22,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     showSkipButton = false
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const isMountedRef = useRef(true);
     const { messages } = useChatStore();
 
     // Always include initial messages, then add store messages
@@ -29,52 +30,84 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
     console.log('ChatMessages render - isTyping:', isTyping, 'showSkipButton:', showSkipButton); // Debug log
 
+    // Track component mount state
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        console.log('ChatMessages component mounted');
+        isMountedRef.current = true;
+        
+        return () => {
+            console.log('ChatMessages component unmounted');
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        if (isMountedRef.current && messagesEndRef.current) {
+            try {
+                messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error scrolling to bottom:', error);
+            }
+        }
     }, [messages, isTyping]);
 
-    const renderMessageContent = (message: Message) => {
-        // Case 1: If message has explicit links array
-        if (message.links) {
-            let content = message.content;
-            message.links.forEach(link => {
-                content = content.replace(
-                    link.text,
-                    `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="text-[#00FF2A] hover:opacity-80">${link.text}</a>`
+    const renderMessageContent = useCallback((message: Message) => {
+        try {
+            // Case 1: If message has explicit links array
+            if (message.links) {
+                let content = message.content;
+                message.links.forEach(link => {
+                    content = content.replace(
+                        link.text,
+                        `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="text-[#00FF2A] hover:opacity-80">${link.text}</a>`
+                    );
+                });
+                return <div dangerouslySetInnerHTML={{ __html: content }} />;
+            }
+            
+            // Case 2: If the content is HTML (contains tags)
+            const containsHTML = /<[^>]*>/g.test(message.content);
+            if (containsHTML) {
+                // Add the same classes to any <a> tags in the content
+                const contentWithStyles = message.content.replace(
+                    /<a\s/g,
+                    '<a class="text-[#00FF2A] hover:opacity-80" target="_blank" rel="noopener noreferrer" '
                 );
-            });
-            return <div dangerouslySetInnerHTML={{ __html: content }} />;
+                return <div dangerouslySetInnerHTML={{ __html: contentWithStyles }} />;
+            }
+            
+            // Case 3: Plain text content
+            return message.content;
+        } catch (error) {
+            console.error('Error rendering message content:', error);
+            return 'Error displaying message';
         }
-        
-        // Case 2: If the content is HTML (contains tags)
-        const containsHTML = /<[^>]*>/g.test(message.content);
-        if (containsHTML) {
-            // Add the same classes to any <a> tags in the content
-            const contentWithStyles = message.content.replace(
-                /<a\s/g,
-                '<a class="text-[#00FF2A] hover:opacity-80" target="_blank" rel="noopener noreferrer" '
-            );
-            return <div dangerouslySetInnerHTML={{ __html: contentWithStyles }} />;
-        }
-        
-        // Case 3: Plain text content
-        return message.content;
-    };
+    }, []);
 
-    const getMessageStyle = (message: Message) => {
+    const getMessageStyle = useCallback((message: Message) => {
         let className = 'message-wrapper';
         className += message.isLastInGroup ? ' mb-[30px]' : ' mb-[10px]';
         className += message.type === 'user' ? ' flex-row-reverse chat-bubble-user' : '';
         return className;
-    };
+    }, []);
 
     // Handle skip button click with logging
-    const handleSkip = () => {
+    const handleSkip = useCallback(() => {
         console.log('Skip button clicked in ChatMessages');
-        if (onSkip) {
-            onSkip();
+        if (!isMountedRef.current) {
+            console.warn('Skip button clicked but ChatMessages is unmounted');
+            return;
         }
-    };
+        
+        if (onSkip) {
+            try {
+                onSkip();
+            } catch (error) {
+                console.error('Error in skip button handler:', error);
+            }
+        }
+    }, [onSkip]);
 
     return (
         <>
