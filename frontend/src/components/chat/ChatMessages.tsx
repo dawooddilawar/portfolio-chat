@@ -1,6 +1,6 @@
 // src/components/chat/ChatMessages.tsx
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
 import { SkipButton } from './SkipButton';
@@ -23,7 +23,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const isMountedRef = useRef(true);
+    const skipClickedRef = useRef(false);
     const { messages } = useChatStore();
+    const [hasError, setHasError] = useState(false);
 
     // Always include initial messages, then add store messages
     const displayMessages = [...initialMessages, ...messages];
@@ -34,6 +36,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     useEffect(() => {
         console.log('ChatMessages component mounted');
         isMountedRef.current = true;
+        skipClickedRef.current = false;
         
         return () => {
             console.log('ChatMessages component unmounted');
@@ -43,14 +46,26 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
     // Scroll to bottom when messages change
     useEffect(() => {
-        if (isMountedRef.current && messagesEndRef.current) {
-            try {
-                messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-            } catch (error) {
-                console.error('Error scrolling to bottom:', error);
+        if (!isMountedRef.current) return;
+        
+        // Use requestAnimationFrame to ensure DOM is updated before scrolling
+        const scrollTimeout = requestAnimationFrame(() => {
+            if (isMountedRef.current && messagesEndRef.current) {
+                try {
+                    messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                } catch (error) {
+                    console.error('Error scrolling to bottom:', error);
+                    if (isMountedRef.current) {
+                        setHasError(true);
+                    }
+                }
             }
-        }
-    }, [messages, isTyping]);
+        });
+        
+        return () => {
+            cancelAnimationFrame(scrollTimeout);
+        };
+    }, [messages, isTyping, displayMessages.length]);
 
     const renderMessageContent = useCallback((message: Message) => {
         try {
@@ -81,6 +96,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             return message.content;
         } catch (error) {
             console.error('Error rendering message content:', error);
+            if (isMountedRef.current) {
+                setHasError(true);
+            }
             return 'Error displaying message';
         }
     }, []);
@@ -100,14 +118,41 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             return;
         }
         
+        // Prevent duplicate skip clicks
+        if (skipClickedRef.current) {
+            console.log('Skip already clicked, ignoring duplicate call');
+            return;
+        }
+        
+        skipClickedRef.current = true;
+        
         if (onSkip) {
             try {
                 onSkip();
             } catch (error) {
                 console.error('Error in skip button handler:', error);
+                if (isMountedRef.current) {
+                    setHasError(true);
+                }
+            } finally {
+                // Reset skip clicked flag after a short delay
+                setTimeout(() => {
+                    skipClickedRef.current = false;
+                }, 100);
             }
         }
     }, [onSkip]);
+
+    // If there's an error, show a simple error message
+    if (hasError) {
+        return (
+            <div className="message-wrapper mb-[30px]">
+                <div className="message-content pixel-corners">
+                    <p>Error displaying messages. Please refresh the page.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

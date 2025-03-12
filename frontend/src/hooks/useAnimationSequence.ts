@@ -11,16 +11,25 @@ export const useAnimationSequence = (phases: Message[][]) => {
     const isAnimatingRef = useRef(false);
     const timeoutsRef = useRef<number[]>([]);
     const isMountedRef = useRef(true); // Track if component is mounted
+    const isSkippingRef = useRef(false); // Track if skip operation is in progress
+    const skipDebounceTimeoutRef = useRef<number | null>(null); // For debouncing skip operations
     const { skipAnimation, setSkipAnimation } = useAnimationStore();
 
     // Set up mount/unmount tracking
     useEffect(() => {
         console.log('useAnimationSequence hook initialized');
         isMountedRef.current = true;
+        isSkippingRef.current = false;
         
         return () => {
             console.log('useAnimationSequence hook cleanup');
             isMountedRef.current = false;
+            
+            // Clear debounce timeout if it exists
+            if (skipDebounceTimeoutRef.current !== null) {
+                clearTimeout(skipDebounceTimeoutRef.current);
+                skipDebounceTimeoutRef.current = null;
+            }
             
             // Ensure all timeouts are cleared on unmount
             if (timeoutsRef.current.length > 0) {
@@ -44,27 +53,60 @@ export const useAnimationSequence = (phases: Message[][]) => {
 
     // Safe state update functions that check if component is mounted
     const safeSetVisibleMessages = useCallback((updater: React.SetStateAction<Message[]>) => {
-        if (isMountedRef.current) {
-            try {
-                setVisibleMessages(updater);
-            } catch (error) {
-                console.error('Error updating visibleMessages:', error);
-            }
-        } else {
+        if (!isMountedRef.current) {
             console.warn('Attempted to update visibleMessages after unmount');
+            return;
+        }
+        
+        try {
+            // Use a try-catch block to handle potential errors
+            setVisibleMessages(updater);
+        } catch (error) {
+            console.error('Error updating visibleMessages:', error);
+            
+            // If there's an error, try a simpler update approach
+            if (typeof updater === 'function') {
+                try {
+                    // Get the current state
+                    const currentMessages = visibleMessages;
+                    // Apply the updater function
+                    const newMessages = (updater as (prev: Message[]) => Message[])(currentMessages);
+                    // Set the state directly
+                    setVisibleMessages(newMessages);
+                } catch (fallbackError) {
+                    console.error('Fallback error updating visibleMessages:', fallbackError);
+                }
+            }
+        }
+    }, [visibleMessages]);
+
+    const safeSetIsTyping = useCallback((value: boolean) => {
+        if (!isMountedRef.current) {
+            console.warn('Attempted to update isTyping after unmount');
+            return;
+        }
+        
+        try {
+            setIsTyping(value);
+        } catch (error) {
+            console.error('Error updating isTyping:', error);
         }
     }, []);
 
-    const safeSetIsTyping = useCallback((value: boolean) => {
-        if (isMountedRef.current) {
-            try {
-                setIsTyping(value);
-            } catch (error) {
-                console.error('Error updating isTyping:', error);
-            }
-        } else {
-            console.warn('Attempted to update isTyping after unmount');
+    // Debounced skip function to prevent multiple rapid calls
+    const debouncedSkip = useCallback((callback: () => void) => {
+        // Clear any existing debounce timeout
+        if (skipDebounceTimeoutRef.current !== null) {
+            clearTimeout(skipDebounceTimeoutRef.current);
         }
+        
+        // Set a new debounce timeout
+        skipDebounceTimeoutRef.current = window.setTimeout(() => {
+            skipDebounceTimeoutRef.current = null;
+            if (isMountedRef.current) {
+                callback();
+            }
+        }, 50); // 50ms debounce time
     }, []);
 
     // Function to skip all animations and show all messages
@@ -77,31 +119,48 @@ export const useAnimationSequence = (phases: Message[][]) => {
             return;
         }
         
-        // Clear all pending timeouts
-        clearAllTimeouts();
-        
-        try {
-            // Flatten all phases into a single array of messages
-            const allMessages = phases.flat();
-            safeSetVisibleMessages(allMessages);
-            safeSetIsTyping(false);
-            
-            // Set current phase to the end to prevent further animations
-            currentPhaseRef.current = phases.length;
-            isAnimatingRef.current = false;
-            
-            // Update the global state
-            setSkipAnimation(true);
-            
-            console.log('Animation skipped, all messages shown');
-        } catch (error) {
-            console.error('Error in skipAllAnimations:', error);
+        // Prevent duplicate skip operations
+        if (isSkippingRef.current) {
+            console.log('Skip operation already in progress, ignoring duplicate call');
+            return;
         }
-    }, [phases, clearAllTimeouts, setSkipAnimation, safeSetVisibleMessages, safeSetIsTyping]);
+        
+        // Mark skip operation as in progress
+        isSkippingRef.current = true;
+        
+        // Use debounced skip to prevent multiple rapid calls
+        debouncedSkip(() => {
+            try {
+                // Clear all pending timeouts
+                clearAllTimeouts();
+                
+                // Flatten all phases into a single array of messages
+                const allMessages = phases.flat();
+                
+                // Update state safely
+                safeSetVisibleMessages(allMessages);
+                safeSetIsTyping(false);
+                
+                // Set current phase to the end to prevent further animations
+                currentPhaseRef.current = phases.length;
+                isAnimatingRef.current = false;
+                
+                // Update the global state
+                setSkipAnimation(true);
+                
+                console.log('Animation skipped, all messages shown');
+            } catch (error) {
+                console.error('Error in skipAllAnimations:', error);
+            } finally {
+                // Reset skip operation status
+                isSkippingRef.current = false;
+            }
+        });
+    }, [phases, clearAllTimeouts, setSkipAnimation, safeSetVisibleMessages, safeSetIsTyping, debouncedSkip]);
 
     // Check if animation should be skipped (from store)
     useEffect(() => {
-        if (skipAnimation && isMountedRef.current) {
+        if (skipAnimation && isMountedRef.current && !isSkippingRef.current) {
             console.log('Skip animation detected from store, calling skipAllAnimations');
             skipAllAnimations();
         }
