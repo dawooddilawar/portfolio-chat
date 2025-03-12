@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 
-export const ChatInput: React.FC = () => {
+interface ChatInputProps {
+    onInputStarted?: () => void;
+}
+
+export const ChatInput: React.FC<ChatInputProps> = ({ onInputStarted }) => {
     const [input, setInput] = useState('');
     const { sendMessage, isLoading, error } = useChat();
-
+    
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -14,13 +18,21 @@ export const ChatInput: React.FC = () => {
             return;
         }
 
+        if (onInputStarted) {
+            onInputStarted();
+        }
+        
         try {
             setInput('');
             const response = await sendMessage(input);
         } catch (err) {
             console.error('Error in handleSubmit:', err);
         }
-    }, [input, isLoading, sendMessage]);
+    }, [input, isLoading, sendMessage, onInputStarted]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInput(e.target.value);
+    };
 
     return (
         <>
@@ -28,7 +40,7 @@ export const ChatInput: React.FC = () => {
             <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 maxLength={250}
                 placeholder={error || (isLoading ? "Processing..." : "Ask something about me or type a command (e.g., /help)")}
                 disabled={isLoading}

@@ -5,6 +5,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatMessages } from '@/components/chat/ChatMessages';
+import { SkipButton } from '@/components/chat/SkipButton';
 import { useAnimationSequence } from '@/hooks/useAnimationSequence';
 import { useInView } from '@/hooks/useInView';
 import {
@@ -14,6 +15,7 @@ import {
     contactPhase,
 } from '@/config/messages';
 import { useChatStore } from '@/store/chatStore';
+import { useAnimationStore } from '@/store/animationStore';
 import '@/styles/chat.css';
 
 export const Chat: React.FC = () => {
@@ -21,6 +23,7 @@ export const Chat: React.FC = () => {
     const inView = useInView(chatRef);
     const animationStarted = useRef(false);
     const { isLoading } = useChatStore();
+    const { setSkipAnimation } = useAnimationStore();
 
     const {
         visibleMessages,
@@ -33,6 +36,11 @@ export const Chat: React.FC = () => {
         contactPhase,
     ]);
 
+    // Handle user input to skip animations
+    const handleUserInputStarted = () => {
+        setSkipAnimation(true);
+    };
+
     useEffect(() => {
         if (inView && !animationStarted.current) {
             animationStarted.current = true;
@@ -42,14 +50,21 @@ export const Chat: React.FC = () => {
 
     return (
         <div ref={chatRef} className="chat-container">
-            <div className="messages-container">
+            <div className="messages-container relative">
                 <ChatMessages
                     initialMessages={visibleMessages}
                     isTyping={isTyping || isLoading}
                 />
+                
+                {/* Skip button - only shown during animation */}
+                {isTyping && (
+                    <div className="absolute top-4 right-4">
+                        <SkipButton />
+                    </div>
+                )}
             </div>
             <div className="chat-input-container">
-                <ChatInput />
+                <ChatInput onInputStarted={handleUserInputStarted} />
             </div>
         </div>
     );
