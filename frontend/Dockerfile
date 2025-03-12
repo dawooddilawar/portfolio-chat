@@ -3,6 +3,9 @@ FROM node:20-alpine as builder
 
 WORKDIR /app
 
+ARG ADMIN_USERNAME
+ARG ADMIN_PASSWORD
+
 # Copy package files
 COPY package*.json ./
 RUN npm install
@@ -26,9 +29,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-
-ENV ADMIN_USERNAME=${ADMIN_USERNAME}
-ENV ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 EXPOSE 3000
 CMD ["npm", "start"]
