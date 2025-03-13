@@ -135,7 +135,7 @@ export const useAnimationSequence = (phases: Message[][]) => {
                 clearAllTimeouts();
                 
                 // Flatten all phases into a single array of messages
-                const allMessages = phases.flat();
+                const allMessages = phases.flat().filter(Boolean);
                 
                 // Update state safely
                 safeSetVisibleMessages(allMessages);
@@ -168,9 +168,9 @@ export const useAnimationSequence = (phases: Message[][]) => {
 
     // Create a timeout that can be tracked and cleared
     const createTrackedTimeout = useCallback((callback: () => void, delay: number) => {
-        // Don't create new timeouts if component is unmounting
-        if (!isMountedRef.current) {
-            console.warn('Attempted to create timeout after unmount');
+        // Don't create new timeouts if component is unmounting or if skip is active
+        if (!isMountedRef.current || skipAnimation) {
+            console.warn('Attempted to create timeout after unmount or during skip');
             return -1;
         }
         
@@ -179,15 +179,15 @@ export const useAnimationSequence = (phases: Message[][]) => {
             // Remove this timeout from the tracking array when it completes
             timeoutsRef.current = timeoutsRef.current.filter(id => id !== timeoutId);
             
-            // Only execute callback if component is still mounted
-            if (isMountedRef.current) {
+            // Only execute callback if component is still mounted and not skipping
+            if (isMountedRef.current && !skipAnimation) {
                 try {
                     callback();
                 } catch (error) {
                     console.error('Error in timeout callback:', error);
                 }
             } else {
-                console.warn('Timeout callback prevented after unmount');
+                console.warn('Timeout callback prevented after unmount or during skip');
             }
         };
         
@@ -199,9 +199,26 @@ export const useAnimationSequence = (phases: Message[][]) => {
         console.log(`Created timeout ${timeoutId}, total active: ${timeoutsRef.current.length}`);
         
         return timeoutId;
-    }, []);
+    }, [skipAnimation]);
 
-    const playNextPhase = useCallback(async () => {
+    // Add a single message with proper error handling
+    const addMessage = useCallback((message: Message) => {
+        if (!isMountedRef.current || skipAnimation) return;
+        
+        if (!message) {
+            console.error('Attempted to add undefined message');
+            return;
+        }
+        
+        try {
+            safeSetVisibleMessages(prev => [...prev, message]);
+        } catch (error) {
+            console.error('Error adding message:', error);
+        }
+    }, [safeSetVisibleMessages, skipAnimation]);
+
+    // Simplified phase player that uses fewer timeouts
+    const playNextPhase = useCallback(() => {
         // Don't proceed if component is unmounted
         if (!isMountedRef.current) {
             console.warn('playNextPhase called after unmount');
@@ -228,20 +245,25 @@ export const useAnimationSequence = (phases: Message[][]) => {
             if (currentPhaseRef.current === 0) {
                 // First phase: show messages with 0.5s delay
                 console.log('Playing first phase');
-                safeSetVisibleMessages(prev => [...prev, currentPhase[0]]);
                 
+                // Add first message immediately
+                if (currentPhase[0]) {
+                    addMessage(currentPhase[0]);
+                }
+                
+                // Add second message after delay
                 createTrackedTimeout(() => {
-                    // Check if component is still mounted before continuing
-                    if (!isMountedRef.current) return;
+                    if (!isMountedRef.current || skipAnimation) return;
                     
                     console.log('Adding second message of first phase');
-                    safeSetVisibleMessages(prev => [...prev, currentPhase[1]]);
+                    if (currentPhase[1]) {
+                        addMessage(currentPhase[1]);
+                    }
                     
+                    // Move to next phase after delay
                     createTrackedTimeout(() => {
-                        // Check if component is still mounted before continuing
-                        if (!isMountedRef.current) return;
+                        if (!isMountedRef.current || skipAnimation) return;
                         
-                        // Move to next phase after delay
                         console.log('First phase complete');
                         currentPhaseRef.current++;
                         isAnimatingRef.current = false;
@@ -249,62 +271,60 @@ export const useAnimationSequence = (phases: Message[][]) => {
                         if (currentPhaseRef.current < phases.length && isMountedRef.current) {
                             playNextPhase();
                         }
-                    }, 5000);
+                    }, 3000); // Reduced from 5000
                 }, 500);
             } else {
                 // Other phases
                 console.log(`Playing phase ${currentPhaseRef.current + 1}`);
                 safeSetIsTyping(true);
                 
+                // Use a single timeout instead of nested ones
                 createTrackedTimeout(() => {
-                    // Check if component is still mounted before continuing
-                    if (!isMountedRef.current) return;
+                    if (!isMountedRef.current || skipAnimation) return;
                     
                     safeSetIsTyping(false);
                     
-                    // Add each message with a delay
-                    let messageIndex = 0;
-                    
-                    const addNextMessage = () => {
-                        // Check if component is still mounted before continuing
-                        if (!isMountedRef.current) return;
+                    // Add messages sequentially with a single timeout
+                    const addMessagesSequentially = (index = 0) => {
+                        if (!isMountedRef.current || skipAnimation) return;
                         
-                        if (messageIndex < currentPhase.length) {
-                            console.log(`Adding message ${messageIndex + 1} of phase ${currentPhaseRef.current + 1}`);
-                            safeSetVisibleMessages(prev => [...prev, currentPhase[messageIndex]]);
-                            messageIndex++;
-                            
-                            if (messageIndex < currentPhase.length && isMountedRef.current) {
-                                createTrackedTimeout(addNextMessage, 500);
-                            } else if (isMountedRef.current) {
-                                // All messages in this phase added, move to next phase
-                                createTrackedTimeout(() => {
-                                    // Check if component is still mounted before continuing
-                                    if (!isMountedRef.current) return;
-                                    
-                                    console.log(`Phase ${currentPhaseRef.current + 1} complete`);
-                                    currentPhaseRef.current++;
-                                    isAnimatingRef.current = false;
-                                    
-                                    if (currentPhaseRef.current < phases.length && isMountedRef.current) {
-                                        playNextPhase();
-                                    } else {
-                                        console.log('All phases complete');
-                                    }
-                                }, 500);
+                        if (index < currentPhase.length) {
+                            console.log(`Adding message ${index + 1} of phase ${currentPhaseRef.current + 1}`);
+                            if (currentPhase[index]) {
+                                addMessage(currentPhase[index]);
                             }
+                            
+                            // Schedule next message
+                            createTrackedTimeout(() => {
+                                addMessagesSequentially(index + 1);
+                            }, 500);
+                        } else {
+                            // All messages added, move to next phase
+                            createTrackedTimeout(() => {
+                                if (!isMountedRef.current || skipAnimation) return;
+                                
+                                console.log(`Phase ${currentPhaseRef.current + 1} complete`);
+                                currentPhaseRef.current++;
+                                isAnimatingRef.current = false;
+                                
+                                if (currentPhaseRef.current < phases.length && isMountedRef.current) {
+                                    playNextPhase();
+                                } else {
+                                    console.log('All phases complete');
+                                }
+                            }, 500);
                         }
                     };
                     
                     // Start adding messages
-                    addNextMessage();
-                }, 5000);
+                    addMessagesSequentially();
+                }, 3000); // Reduced from 5000
             }
         } catch (error) {
             console.error('Error in playNextPhase:', error);
             isAnimatingRef.current = false;
         }
-    }, [phases, skipAnimation, skipAllAnimations, createTrackedTimeout, safeSetVisibleMessages, safeSetIsTyping]);
+    }, [phases, skipAnimation, skipAllAnimations, createTrackedTimeout, safeSetIsTyping, addMessage]);
 
     const startAnimation = useCallback(() => {
         // Don't proceed if component is unmounted

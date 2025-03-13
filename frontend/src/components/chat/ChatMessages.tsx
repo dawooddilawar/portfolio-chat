@@ -28,9 +28,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     const [hasError, setHasError] = useState(false);
 
     // Always include initial messages, then add store messages
-    const displayMessages = [...initialMessages, ...messages];
+    // Filter out any undefined or null messages to prevent errors
+    const displayMessages = [...(initialMessages || []), ...(messages || [])].filter(Boolean);
 
-    console.log('ChatMessages render - isTyping:', isTyping, 'showSkipButton:', showSkipButton); // Debug log
+    console.log('ChatMessages render - isTyping:', isTyping, 'showSkipButton:', showSkipButton, 'messageCount:', displayMessages.length); // Debug log
 
     // Track component mount state
     useEffect(() => {
@@ -68,6 +69,11 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     }, [messages, isTyping, displayMessages.length]);
 
     const renderMessageContent = useCallback((message: Message) => {
+        if (!message) {
+            console.error('Attempted to render undefined message');
+            return 'Error: Message data is missing';
+        }
+        
         try {
             // Case 1: If message has explicit links array
             if (message.links) {
@@ -82,7 +88,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             }
             
             // Case 2: If the content is HTML (contains tags)
-            const containsHTML = /<[^>]*>/g.test(message.content);
+            const containsHTML = /<[^>]*>/g.test(message.content || '');
             if (containsHTML) {
                 // Add the same classes to any <a> tags in the content
                 const contentWithStyles = message.content.replace(
@@ -93,7 +99,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             }
             
             // Case 3: Plain text content
-            return message.content;
+            return message.content || 'No content';
         } catch (error) {
             console.error('Error rendering message content:', error);
             if (isMountedRef.current) {
@@ -104,6 +110,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     }, []);
 
     const getMessageStyle = useCallback((message: Message) => {
+        if (!message) {
+            return 'message-wrapper';
+        }
+        
         let className = 'message-wrapper';
         className += message.isLastInGroup ? ' mb-[30px]' : ' mb-[10px]';
         className += message.type === 'user' ? ' flex-row-reverse chat-bubble-user' : '';
@@ -156,22 +166,27 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
     return (
         <>
-            {displayMessages.map((message) => (
-                <div
-                    key={message.id}
-                    className={getMessageStyle(message)}
-                >
-                    {message.isLastInGroup && <Avatar className="mt-2 ml-2" type={message.type} />}
-                    {!message.isLastInGroup && <div className="mt-2 ml-2 w-8 h-8" />}
-
+            {displayMessages.map((message) => {
+                // Skip rendering if message is undefined or null
+                if (!message) return null;
+                
+                return (
                     <div
-                        className={`message-content pixel-corners`}
-                        style={{ width: message.width === 'auto' ? 'auto' : `${message.width}px` }}
+                        key={message.id || `msg-${Math.random()}`}
+                        className={getMessageStyle(message)}
                     >
-                        {renderMessageContent(message)}
+                        {message.isLastInGroup && <Avatar className="mt-2 ml-2" type={message.type} />}
+                        {!message.isLastInGroup && <div className="mt-2 ml-2 w-8 h-8" />}
+
+                        <div
+                            className={`message-content pixel-corners`}
+                            style={{ width: message.width === 'auto' ? 'auto' : `${message.width}px` }}
+                        >
+                            {renderMessageContent(message)}
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
             {isTyping && (
                 <div className="message-wrapper mb-[30px]">
                     <Avatar className="mt-2 ml-2" type="assistant"/>
