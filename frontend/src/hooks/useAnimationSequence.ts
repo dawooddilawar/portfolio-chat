@@ -13,6 +13,7 @@ export const useAnimationSequence = (phases: Message[][]) => {
     const isMountedRef = useRef(true); // Track if component is mounted
     const isSkippingRef = useRef(false); // Track if skip operation is in progress
     const skipDebounceTimeoutRef = useRef<number | null>(null); // For debouncing skip operations
+    const hasSkippedRef = useRef(false); // Track if skip has already been executed (prevent re-running)
     const { skipAnimation, setSkipAnimation } = useAnimationStore();
 
     // Set up mount/unmount tracking
@@ -20,17 +21,18 @@ export const useAnimationSequence = (phases: Message[][]) => {
         console.log('useAnimationSequence hook initialized');
         isMountedRef.current = true;
         isSkippingRef.current = false;
-        
+        hasSkippedRef.current = false;
+
         return () => {
             console.log('useAnimationSequence hook cleanup');
             isMountedRef.current = false;
-            
+
             // Clear debounce timeout if it exists
             if (skipDebounceTimeoutRef.current !== null) {
                 clearTimeout(skipDebounceTimeoutRef.current);
                 skipDebounceTimeoutRef.current = null;
             }
-            
+
             // Ensure all timeouts are cleared on unmount
             if (timeoutsRef.current.length > 0) {
                 clearAllTimeouts();
@@ -112,59 +114,62 @@ export const useAnimationSequence = (phases: Message[][]) => {
     // Function to skip all animations and show all messages
     const skipAllAnimations = useCallback(() => {
         console.log('skipAllAnimations called');
-        
+
         // Only proceed if component is still mounted
         if (!isMountedRef.current) {
             console.warn('skipAllAnimations called after unmount');
             return;
         }
-        
+
         // Prevent duplicate skip operations
-        if (isSkippingRef.current) {
-            console.log('Skip operation already in progress, ignoring duplicate call');
+        if (hasSkippedRef.current || isSkippingRef.current) {
+            console.log('Skip already executed or in progress, ignoring duplicate call');
             return;
         }
-        
-        // Mark skip operation as in progress
+
+        // Mark skip as executed (before debounce to prevent re-execution)
+        hasSkippedRef.current = true;
         isSkippingRef.current = true;
-        
+
         // Use debounced skip to prevent multiple rapid calls
         debouncedSkip(() => {
             try {
                 // Clear all pending timeouts
                 clearAllTimeouts();
-                
+
                 // Flatten all phases into a single array of messages
                 const allMessages = phases.flat().filter(Boolean);
-                
+
                 // Update state safely
                 safeSetVisibleMessages(allMessages);
                 safeSetIsTyping(false);
-                
+
                 // Set current phase to the end to prevent further animations
                 currentPhaseRef.current = phases.length;
                 isAnimatingRef.current = false;
-                
+
                 // Update the global state
                 setSkipAnimation(true);
-                
+
                 console.log('Animation skipped, all messages shown');
             } catch (error) {
                 console.error('Error in skipAllAnimations:', error);
             } finally {
-                // Reset skip operation status
+                // Reset skip operation status but keep hasSkippedRef as true
                 isSkippingRef.current = false;
             }
         });
     }, [phases, clearAllTimeouts, setSkipAnimation, safeSetVisibleMessages, safeSetIsTyping, debouncedSkip]);
 
     // Check if animation should be skipped (from store)
+    // Note: skipAllAnimations is not in dependencies to prevent circular re-renders
     useEffect(() => {
-        if (skipAnimation && isMountedRef.current && !isSkippingRef.current) {
+        if (skipAnimation && isMountedRef.current && !hasSkippedRef.current) {
             console.log('Skip animation detected from store, calling skipAllAnimations');
             skipAllAnimations();
         }
-    }, [skipAnimation, skipAllAnimations]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [skipAnimation]);
 
     // Create a timeout that can be tracked and cleared
     const createTrackedTimeout = useCallback((callback: () => void, delay: number) => {
