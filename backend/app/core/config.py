@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Vector Settings
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 50
-    VECTOR_SIMILARITY_THRESHOLD: float = 0.7
+    VECTOR_SIMILARITY_THRESHOLD: float = 0.60  # was 0.7 (code had 0.76 hardcoded) — too high for general queries
     MAX_RESULTS: int = 3
 
     class Config:

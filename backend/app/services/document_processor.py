@@ -127,11 +127,14 @@ class DocumentProcessor:
         return docs
 
     def _clean_documents(self, docs: List[Document]) -> List[Document]:
-        """Clean and normalise whitespace in extracted document text."""
+        """Normalise whitespace while preserving paragraph boundaries for better embeddings."""
         cleaned_docs = []
         for doc in docs:
-            cleaned_text = doc.page_content.replace('\n\n', ' ').replace('\n', ' ')
-            cleaned_text = ' '.join(cleaned_text.split())
+            # Preserve \n\n paragraph breaks — they carry semantic meaning (sections, bullets).
+            # Only collapse single newlines (layout artifacts) and extra whitespace within paragraphs.
+            paragraphs = doc.page_content.split('\n\n')
+            cleaned_paragraphs = [' '.join(p.split()) for p in paragraphs if p.strip()]
+            cleaned_text = '\n\n'.join(cleaned_paragraphs)
             cleaned_docs.append(Document(page_content=cleaned_text, metadata=doc.metadata))
         return cleaned_docs
 

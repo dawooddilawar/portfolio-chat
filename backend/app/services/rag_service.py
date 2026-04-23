@@ -42,10 +42,11 @@ class RAGService:
             embedding_function=self.embeddings,
         )
 
-        # EmbeddingsFilter uses cosine similarity on embeddings — no extra LLM calls
+        # EmbeddingsFilter uses cosine similarity on embeddings — no extra LLM calls.
+        # Threshold pulled from settings so it's tunable via env var without code changes.
         embeddings_filter = EmbeddingsFilter(
             embeddings=self.embeddings,
-            similarity_threshold=0.76
+            similarity_threshold=settings.VECTOR_SIMILARITY_THRESHOLD
         )
 
         base_retriever = self.vector_store.as_retriever(
@@ -123,7 +124,7 @@ class RAGService:
         # Create the chain
         self.rag_chain = (
             {
-                "context": self.retriever | format_docs,
+                "context": self.retriever | log_retrieved_docs | format_docs,
                 "question": RunnablePassthrough()
             }
             | RunnableParallel(
@@ -164,6 +165,19 @@ class RAGService:
         except Exception as e:
             logger.error(f"Error in similarity search: {str(e)}", exc_info=True)
             raise
+
+def log_retrieved_docs(docs: List[Document]) -> List[Document]:
+    """Log retrieval counts so silent empty-context failures are visible."""
+    if not docs:
+        logger.warning(
+            "EmbeddingsFilter returned 0 docs — all chunks were below "
+            f"the similarity_threshold ({settings.VECTOR_SIMILARITY_THRESHOLD}). "
+            "Lower VECTOR_SIMILARITY_THRESHOLD in .env if relevant docs exist."
+        )
+    else:
+        logger.info(f"Retrieved {len(docs)} doc(s) after compression filtering")
+    return docs
+
 
 def format_docs(docs: List[Document]) -> str:
     """Format documents into a single string."""
