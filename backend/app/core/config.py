@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Vector Settings
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 50
-    VECTOR_SIMILARITY_THRESHOLD: float = 0.60  # was 0.7 (code had 0.76 hardcoded) — too high for general queries
+    VECTOR_SIMILARITY_THRESHOLD: float = 0.20  # similarity scale (1-distance); resume chunks score ~0.27-0.29
     MAX_RESULTS: int = 3
 
     class Config:

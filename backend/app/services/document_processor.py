@@ -127,24 +127,32 @@ class DocumentProcessor:
         return docs
 
     def _clean_documents(self, docs: List[Document]) -> List[Document]:
-        """Normalise whitespace while preserving paragraph boundaries for better embeddings."""
+        """Normalise whitespace and strip PDF encoding artifacts for better embeddings."""
+        import re
         cleaned_docs = []
         for doc in docs:
-            # Preserve \n\n paragraph breaks — they carry semantic meaning (sections, bullets).
-            # Only collapse single newlines (layout artifacts) and extra whitespace within paragraphs.
-            paragraphs = doc.page_content.split('\n\n')
+            text = doc.page_content
+            # Strip C0/C1 control characters (ESC \x1b, SYN \x16, \x88, etc.) that
+            # PyMuPDF emits for ligatures/special chars in some LaTeX-produced PDFs
+            text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+            # Restore common ligature artifacts: "con dence" -> "confidence" etc.
+            text = re.sub(r'\bcon dence\b', 'confidence', text)
+            text = re.sub(r'\blter(ing|ed|s)?\b', lambda m: 'filter' + (m.group(1) or ''), text)
+            text = re.sub(r'\bpro le\b', 'profile', text)
+            # Preserve \n\n paragraph breaks, collapse single newlines and extra spaces
+            paragraphs = text.split('\n\n')
             cleaned_paragraphs = [' '.join(p.split()) for p in paragraphs if p.strip()]
             cleaned_text = '\n\n'.join(cleaned_paragraphs)
             cleaned_docs.append(Document(page_content=cleaned_text, metadata=doc.metadata))
         return cleaned_docs
 
     async def _split_documents(self, docs: List[Document]) -> List[Document]:
-        """Split documents into chunks."""
+        """Split documents into chunks, discarding low-signal micro-chunks."""
         chunks = []
         for doc in docs:
-            # Split the document while preserving metadata
             doc_chunks = self.text_splitter.split_documents([doc])
-            chunks.extend(doc_chunks)
+            # Drop chunks that are too short to carry semantic meaning (e.g. lone section headers)
+            chunks.extend(c for c in doc_chunks if len(c.page_content.strip()) >= 80)
         return chunks
 
     async def _store_documents(self, documents: List[Document]) -> None:

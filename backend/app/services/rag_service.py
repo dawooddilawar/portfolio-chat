@@ -10,8 +10,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableParallel
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import EmbeddingsFilter
 from app.core.config import get_settings
 from app.config import CONTACT_DETAILS, PERSONALITY_SETTINGS
 import datetime
@@ -25,7 +23,7 @@ class RAGService:
             collection_name: str = "portfolio_chunks",
             model_name: str = "gemini-2.5-flash",
             temperature: float = 0.7,
-            max_tokens: int = 1000
+            max_tokens: int = 2048
     ):
         self.connection_string = settings.get_database_url()
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -42,21 +40,12 @@ class RAGService:
             embedding_function=self.embeddings,
         )
 
-        # EmbeddingsFilter uses cosine similarity on embeddings — no extra LLM calls.
-        # Threshold pulled from settings so it's tunable via env var without code changes.
-        embeddings_filter = EmbeddingsFilter(
-            embeddings=self.embeddings,
-            similarity_threshold=settings.VECTOR_SIMILARITY_THRESHOLD
-        )
-
-        base_retriever = self.vector_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 5}
-        )
-
-        self.retriever = ContextualCompressionRetriever(
-            base_compressor=embeddings_filter,
-            base_retriever=base_retriever
+        # PGVector returns cosine distance (lower = more similar). score_threshold filters
+        # out docs whose *similarity* (1 - distance) is below the threshold, so 0.3 keeps
+        # anything with distance < 0.7 — wide enough to catch resume + humor content.
+        self.retriever = self.vector_store.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"k": 8, "score_threshold": settings.VECTOR_SIMILARITY_THRESHOLD}
         )
         
         self.personality = self.get_current_personality()
@@ -80,7 +69,7 @@ class RAGService:
         # Move templates to separate constants or config file
         CONTEXT_TEMPLATE = (
             "Here is information about me from my resume and portfolio:\n"
-            "You are acting as me, the portfolio owner. Try to keep a profesional yet casual tone, keep the response short and concise."
+            "You are acting as me, the portfolio owner. Keep a professional yet casual tone. Always write complete sentences — never stop mid-sentence. Aim for 3-5 sentences unless the question genuinely requires more detail."
             "You have access to my resume and portfolio, use this information to provide a detailed and accurate response. It includes my projects, experience, and background."
             "{context}\n\n"
             "Use this information to provide a detailed and accurate response. "
@@ -125,7 +114,7 @@ class RAGService:
         self.rag_chain = (
             {
                 "context": self.retriever | log_retrieved_docs | format_docs,
-                "question": RunnablePassthrough()
+                "question": RunnablePassthrough(),
             }
             | RunnableParallel(
                 formatted_context=lambda x: context_formatter.format(context=x["context"]),
@@ -170,12 +159,12 @@ def log_retrieved_docs(docs: List[Document]) -> List[Document]:
     """Log retrieval counts so silent empty-context failures are visible."""
     if not docs:
         logger.warning(
-            "EmbeddingsFilter returned 0 docs — all chunks were below "
-            f"the similarity_threshold ({settings.VECTOR_SIMILARITY_THRESHOLD}). "
+            "Retriever returned 0 docs — no chunks met the score_threshold "
+            f"({settings.VECTOR_SIMILARITY_THRESHOLD}). "
             "Lower VECTOR_SIMILARITY_THRESHOLD in .env if relevant docs exist."
         )
     else:
-        logger.info(f"Retrieved {len(docs)} doc(s) after compression filtering")
+        logger.info(f"Retrieved {len(docs)} doc(s) after threshold filtering")
     return docs
 
 
