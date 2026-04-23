@@ -12,7 +12,6 @@ from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_openai import OpenAIEmbeddings
-from unstructured.partition.api import partition_via_api
 from unstructured.partition.auto import partition
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -128,34 +127,12 @@ class DocumentProcessor:
         return docs
 
     def _clean_documents(self, docs: List[Document]) -> List[Document]:
-        """Clean and preprocess documents using Unstructured's partition capabilities."""
+        """Clean and normalise whitespace in extracted document text."""
         cleaned_docs = []
         for doc in docs:
-            try:
-                # Use partition to clean and structure the text
-                elements = partition(text=doc.page_content)
-                # Combine the cleaned text from elements
-                cleaned_text = " ".join(element.text for element in elements)
-                
-                # Create new document with cleaned text
-                cleaned_doc = Document(
-                    page_content=cleaned_text,
-                    metadata=doc.metadata
-                )
-                cleaned_docs.append(cleaned_doc)
-                
-            except Exception as e:
-                logger.warning(f"Error cleaning document, falling back to basic cleaning: {str(e)}")
-                # Fallback to basic cleaning if partition fails
-                cleaned_text = doc.page_content
-                cleaned_text = cleaned_text.replace('\n\n', ' ').replace('\n', ' ')
-                cleaned_text = ' '.join(cleaned_text.split())
-                cleaned_doc = Document(
-                    page_content=cleaned_text,
-                    metadata=doc.metadata
-                )
-                cleaned_docs.append(cleaned_doc)
-
+            cleaned_text = doc.page_content.replace('\n\n', ' ').replace('\n', ' ')
+            cleaned_text = ' '.join(cleaned_text.split())
+            cleaned_docs.append(Document(page_content=cleaned_text, metadata=doc.metadata))
         return cleaned_docs
 
     async def _split_documents(self, docs: List[Document]) -> List[Document]:
