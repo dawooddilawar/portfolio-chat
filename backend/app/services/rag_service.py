@@ -23,7 +23,7 @@ class RAGService:
     def __init__(
             self,
             collection_name: str = "portfolio_chunks",
-            model_name: str = "gemini-2.0-flash",
+            model_name: str = "gemini-2.5-flash",
             temperature: float = 0.7,
             max_tokens: int = 1000
     ):
