@@ -11,11 +11,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableParallel
 from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import DocumentCompressorPipeline
-from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain.retrievers.document_compressors import EmbeddingsFilter
 from app.core.config import get_settings
 from app.config import CONTACT_DETAILS, PERSONALITY_SETTINGS
-import json
 import datetime
 
 settings = get_settings()
@@ -44,21 +42,19 @@ class RAGService:
             embedding_function=self.embeddings,
         )
 
-        # Set up document compressor for better retrieval
-        compressor_pipeline = DocumentCompressorPipeline(
-            transformers=[
-                LLMChainExtractor.from_llm(llm=self.llm)
-            ]
+        # EmbeddingsFilter uses cosine similarity on embeddings — no extra LLM calls
+        embeddings_filter = EmbeddingsFilter(
+            embeddings=self.embeddings,
+            similarity_threshold=0.76
         )
 
-        # Set up retriever with compression
         base_retriever = self.vector_store.as_retriever(
             search_type="similarity",
             search_kwargs={"k": 5}
         )
 
         self.retriever = ContextualCompressionRetriever(
-            base_compressor=compressor_pipeline,
+            base_compressor=embeddings_filter,
             base_retriever=base_retriever
         )
         
